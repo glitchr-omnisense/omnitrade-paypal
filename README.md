@@ -1,6 +1,6 @@
 # omnitrade/paypal
 
-PayPal for [glitchr/omnitrade](https://github.com/glitchr-studio/omnitrade): orders approved on
+PayPal for [omniscient/omnitrade](https://github.com/glitchr-studio/omnitrade): orders approved on
 PayPal's page and captured when the buyer comes back, authorizations, refunds, and the webhook's
 events - PayPal's v2 REST API, over the application's HTTP client.
 
@@ -8,7 +8,7 @@ events - PayPal's v2 REST API, over the application's HTTP client.
 $gateway = (new PayPalGatewayFactory($http))->create(['client_id' => '...', 'secret' => '...', 'sandbox' => true]);   // $http: the application's HTTP client; none given, the factory makes its own
 ```
 
-No framework needed: the package requires `glitchr/omnitrade` and `symfony/http-client`. In a
+No framework needed: the package requires `omniscient/omnitrade` and `symfony/http-client`. In a
 Symfony application, the same through the bundle's configuration:
 
 ```yaml
