@@ -24,7 +24,13 @@ final class Orders
                 'PARTIALLY_REFUNDED' => Status::PARTIALLY_REFUNDED,
                 'DECLINED', 'FAILED' => Status::REFUSED,
                 'PENDING' => Status::PENDING,
-                default => $authorization && !$capture ? Status::AUTHORIZED : Status::PAID,
+                // An authorization not captured: where it stands (a voided one leaves the order COMPLETED).
+                default => $authorization && !$capture ? match ((string) ($authorization['status'] ?? 'CREATED')) {
+                    'VOIDED' => Status::CANCELLED,
+                    'EXPIRED' => Status::EXPIRED,
+                    'DENIED' => Status::REFUSED,
+                    default => Status::AUTHORIZED,
+                } : Status::PAID,
             },
             'VOIDED' => Status::CANCELLED,
             default => Status::PENDING,
