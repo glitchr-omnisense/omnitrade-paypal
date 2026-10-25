@@ -34,6 +34,9 @@ Credentials: a REST app in the Developer Dashboard (its client id and secret, sa
 are separate), and a webhook on it for `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`,
 `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED` - its id is `webhook_id`.
 
+The manual, [docs/index.md](docs/index.md): every option, what each operation calls and how PayPal's
+answers are read, the webhook events, errors, and what is verified.
+
 ## Responsibility
 
 This package is an independent, unofficial client: it is not affiliated with, endorsed by or
