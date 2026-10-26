@@ -1,6 +1,6 @@
 # omnitrade/paypal
 
-PayPal for [omniscient/omnitrade](https://github.com/glitchr-studio/omnitrade): orders approved on
+PayPal for [omnisense/omnitrade](https://github.com/glitchr-omnisense/omnitrade): orders approved on
 PayPal's page and captured when the buyer comes back, authorizations, refunds, and the webhook's
 events - PayPal's REST API (Orders v2, Payments v2, webhook verification v1) on an OAuth 2
 client-credentials token, over the application's HTTP client. The gateway calls:
@@ -25,7 +25,7 @@ addresses.
 composer require omnitrade/paypal
 ```
 
-Requires PHP 8.2, `omniscient/omnitrade` (1.x) and `symfony/http-client` (6.4, 7 or 8). In a
+Requires PHP 8.2, `omnisense/omnitrade` (1.x) and `symfony/http-client` (6.4, 7 or 8). In a
 Symfony application with `Omnitrade\Bridge\Symfony\OmnitradeBundle`, the factory is registered as
 soon as the package is installed.
 
@@ -212,7 +212,7 @@ $paid->metadata['capture'];   // the capture's id
 ```
 
 The core's manual runs a PayPal purchase offline, on answers shaped as PayPal's documentation
-gives them, with its output ([installation](https://github.com/glitchr-studio/omnitrade/blob/1.x/docs/installation.md)).
+gives them, with its output ([installation](https://github.com/glitchr-omnisense/omnitrade/blob/1.x/docs/installation.md)).
 In the core's Docker harness: `docker compose run --rm omnitrade purchase paypal --amount 1250`,
 then `capture paypal <order id>`.
 
