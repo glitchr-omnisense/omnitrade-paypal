@@ -50,11 +50,7 @@ final class CaptureAction implements ActionInterface, ApiAwareInterface
         }
 
         if ('AUTHORIZE' === ($order['intent'] ?? 'CAPTURE')) {
-            $authorization = $order['purchase_units'][0]['payments']['authorizations'][0]['id'] ?? null;
-            if (null === $authorization) {
-                $authorized = $this->api->call('POST', '/v2/checkout/orders/'.rawurlencode($request->reference).'/authorize', [], $headers);
-                $authorization = $authorized['purchase_units'][0]['payments']['authorizations'][0]['id'] ?? throw new ProviderException('paypal', 'PayPal authorized nothing.');
-            }
+            $authorization = $this->api->authorized($order)['purchase_units'][0]['payments']['authorizations'][0]['id'] ?? throw new ProviderException('paypal', 'PayPal authorized nothing.');
             $body = $request->amount ? ['amount' => ['currency_code' => $request->amount->currency, 'value' => $request->amount->decimal()], 'final_capture' => true] : [];
             $this->api->call('POST', '/v2/payments/authorizations/'.rawurlencode((string) $authorization).'/capture', $body, $headers);
         } else {

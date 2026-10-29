@@ -26,7 +26,8 @@ omnitrade:
 `purchase()` creates an order (intent CAPTURE) and answers PENDING with PayPal's page; PayPal
 brings the buyer back to `returnUrl?token=<order id>`, and `capture($orderId)` takes the money -
 twice is fine, an order already captured is answered as it is. `authorize()` does the same with
-intent AUTHORIZE: `capture()` then takes the money, `void()` lets it go. `refund()` pays back on
+intent AUTHORIZE: once the buyer approved it, `fetch()` reads it AUTHORIZED (the authorization is
+asked for then), `capture()` takes the money, `void()` lets it go. `refund()` pays back on
 the order's capture; `fetch()` reads the order; `notify()` reads `CHECKOUT.ORDER.*` and
 `PAYMENT.CAPTURE.*` events. The idempotency key goes in `PayPal-Request-Id`.
 

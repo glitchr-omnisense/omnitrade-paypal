@@ -101,6 +101,43 @@ final class PayPalGatewayTest extends TestCase
         $gateway->notify($event, $headers('forged'));
     }
 
+    /**
+     * An AUTHORIZE order the buyer approved holds no authorization until the merchant asks for it
+     * (Orders v2, "Authorize payment for order": https://developer.paypal.com/docs/api/orders/v2/#orders_authorize):
+     * fetch() and void() ask for it, so the order reads AUTHORIZED and its authorization is voided.
+     */
+    public function testAnApprovedAuthorizationIsAuthorizedThenFetchedAndVoided(): void
+    {
+        $state = 'APPROVED';
+        $calls = [];
+        $order = static function (string $state): array {
+            $order = self::order('APPROVED' === $state ? 'APPROVED' : 'COMPLETED', 'AUTHORIZE');
+            if ('APPROVED' !== $state) {
+                $order['purchase_units'][0]['payments'] = ['authorizations' => [['id' => '0VF52814937998046', 'status' => $state, 'amount' => ['currency_code' => 'EUR', 'value' => '12.50']]]];
+            }
+
+            return $order;
+        };
+        $http = new MockHttpClient(static function (string $method, string $url, array $options) use (&$state, &$calls, $order): MockResponse {
+            $path = (string) parse_url($url, \PHP_URL_PATH);
+            $calls[] = $method.' '.$path.('POST' === $method && str_ends_with($path, '/authorize') ? ' '.implode('|', array_filter($options['headers'], static fn ($h) => str_starts_with($h, 'PayPal-Request-Id'))) : '');
+
+            return match (true) {
+                '/v1/oauth2/token' === $path => new MockResponse(json_encode(['access_token' => 'A21AA', 'expires_in' => 32400])),
+                'GET' === $method && '/v2/checkout/orders/5O190127TN364715T' === $path => new MockResponse(json_encode($order($state))),
+                'POST' === $method && '/v2/checkout/orders/5O190127TN364715T/authorize' === $path && 'APPROVED' === $state => (static function () use (&$state, $order) { $state = 'CREATED'; return new MockResponse(json_encode($order($state))); })(),
+                'POST' === $method && '/v2/payments/authorizations/0VF52814937998046/void' === $path && 'CREATED' === $state => (static function () use (&$state) { $state = 'VOIDED'; return new MockResponse('', ['http_code' => 204]); })(),
+                default => new MockResponse(json_encode(['name' => 'UNPROCESSABLE_ENTITY', 'message' => 'Not now: '.$method.' '.$path]), ['http_code' => 422]),
+            };
+        });
+        $gateway = (new PayPalGatewayFactory($http))->create(['client_id' => 'cid', 'secret' => 'sec', 'sandbox' => true]);
+
+        self::assertSame(Status::AUTHORIZED, $gateway->fetch('5O190127TN364715T')->status);
+        self::assertSame(Status::AUTHORIZED, $gateway->fetch('5O190127TN364715T')->status, 'authorized once');
+        self::assertSame(Status::CANCELLED, $gateway->void('5O190127TN364715T')->status);
+        self::assertSame(['POST /v2/checkout/orders/5O190127TN364715T/authorize PayPal-Request-Id: 5O190127TN364715T-authorize'], array_values(array_filter($calls, static fn ($c) => str_contains($c, '/authorize'))));
+    }
+
     private static function order(string $status, string $intent, bool $captured = false): array
     {
         $unit = ['reference_id' => 'default', 'custom_id' => 'ORDER-1042', 'amount' => ['currency_code' => 'EUR', 'value' => '12.50']];

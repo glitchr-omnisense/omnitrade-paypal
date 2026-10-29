@@ -36,6 +36,30 @@ final class Api
     }
 
     /**
+     * An order as it stands once authorized: an intent AUTHORIZE order the
+     * buyer approved holds no authorization until the merchant asks for it
+     * (POST /v2/checkout/orders/{id}/authorize, once per order: its
+     * PayPal-Request-Id is "<order>-authorize"); then the order read again.
+     * Any other order is given back as it is.
+     *
+     * @param array<string, mixed> $order
+     *
+     * @return array<string, mixed>
+     *
+     * @throws ProviderException
+     */
+    public function authorized(array $order): array
+    {
+        $id = (string) ($order['id'] ?? '');
+        if ('' === $id || 'AUTHORIZE' !== ($order['intent'] ?? null) || 'APPROVED' !== ($order['status'] ?? null) || isset($order['purchase_units'][0]['payments']['authorizations'][0]['id'])) {
+            return $order;
+        }
+        $this->call('POST', '/v2/checkout/orders/'.rawurlencode($id).'/authorize', [], ['PayPal-Request-Id' => $id.'-authorize']);
+
+        return $this->call('GET', '/v2/checkout/orders/'.rawurlencode($id));
+    }
+
+    /**
      * @param array<string, mixed>|null $body
      *
      * @return array<string, mixed> the JSON answer (empty for 204)

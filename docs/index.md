@@ -9,7 +9,7 @@ client-credentials token, over the application's HTTP client. The gateway calls:
 |---|---|---|
 | token | OAuth 2 | `POST /v1/oauth2/token` |
 | purchase, authorize | Orders v2 | `POST /v2/checkout/orders` |
-| fetch | Orders v2 | `GET /v2/checkout/orders/{id}` |
+| fetch | Orders v2 | `GET /v2/checkout/orders/{id}` (an approved intent `AUTHORIZE` order: `POST /v2/checkout/orders/{id}/authorize` and the order again) |
 | capture | Orders v2, Payments v2 | `GET /v2/checkout/orders/{id}`, then `POST /v2/checkout/orders/{id}/capture`, or `POST /v2/checkout/orders/{id}/authorize` and `POST /v2/payments/authorizations/{id}/capture`, then the order again |
 | void | Orders v2, Payments v2 | `GET /v2/checkout/orders/{id}`, `POST /v2/payments/authorizations/{id}/void`, the order again |
 | refund | Orders v2, Payments v2 | `GET /v2/checkout/orders/{id}` (to find its capture), `POST /v2/payments/captures/{id}/refund` |
@@ -108,20 +108,21 @@ answered as it is - `capture()` may be called twice, by the return page and by t
 order that is neither `APPROVED` nor `COMPLETED` is a `ProviderException` (`The order is <status>:
 the buyer has not approved it.`, the status as `providerCode`). An intent `CAPTURE` order is
 captured (`POST .../capture`); an intent `AUTHORIZE` order is authorized when it holds no
-authorization yet (`POST .../authorize`), then its authorization captured, for `$amount`
-(`final_capture: true`) or all of it. The answer is the order read again. The `PayPal-Request-Id`
-is `<order>-capture-<key>` with an idempotency key.
+authorization yet (below), then its authorization captured, for `$amount` (`final_capture: true`)
+or all of it. The answer is the order read again. The capture's `PayPal-Request-Id` is
+`<order>-capture-<key>` with an idempotency key.
+
+**The authorization.** An intent `AUTHORIZE` order the buyer approved holds no authorization
+until the merchant asks for it ([Authorize payment for
+order](https://developer.paypal.com/docs/api/orders/v2/#orders_authorize)). `fetch()`, `capture()`
+and `void()` ask for it when they read such an order (`POST /v2/checkout/orders/{id}/authorize`,
+`PayPal-Request-Id: <order>-authorize`, so it is made once), then read the order again: after
+`authorize()` and the buyer's approval, `fetch()` reads it AUTHORIZED and `void()` lets it go.
 
 **Void.** The reference is an order's or an authorization's. The order is read; its first
 authorization is voided, and the answer is the order read again. A reference that is not an order
 (PayPal answers an error) is taken as an authorization id, and the answer is a CANCELLED
 transaction with `message: VOIDED`.
-
-> [!WARNING]
-> The authorization of an `AUTHORIZE` order is asked for only inside `capture()`. After
-> `authorize()` and the buyer's approval, the order holds none: `fetch()` reads it PENDING (not
-> AUTHORIZED) and `void()` throws `The order holds no authorization to void.` (checked on
-> recorded answers on 2026-10-25). Release such an order in PayPal's dashboard, or let it expire.
 
 **Refund.** A reference of 17 characters not starting with `CAP-` is first read as an order: its
 first capture is refunded (an order id and a capture id look alike; a capture's id answers an
@@ -239,17 +240,17 @@ A missing `client_id` or `secret` is an `InvalidConfigException` when the gatewa
 
 ## Verified, and not
 
-Tested offline, 15 tests: `Tests/PayPalGatewayTest.php` (an order approved on PayPal's page then
-captured, a refund on the order's capture, a webhook verified by PayPal then read) and
+Tested offline, 16 tests: `Tests/PayPalGatewayTest.php` (an order approved on PayPal's page then
+captured, a refund on the order's capture, a webhook verified by PayPal then read, an approved
+AUTHORIZE order authorized once, fetched AUTHORIZED, then voided) and
 `Tests/PayPalContractTest.php`, the family's conformance suite on an order authorized, then
 captured or voided, with webhooks verified on PayPal's side. The suite found a voided
 authorization (the order still `COMPLETED`, its authorization `VOIDED`) read as AUTHORIZED; it now
 reads CANCELLED. The recorded answers follow PayPal's Orders v2 documentation, with its example
 ids.
 
-Not verified: no call was made to PayPal, sandbox or live; that needs a sandbox app's credentials.
-Not tested: `void()` after `authorize()` and the buyer's approval, before any capture (it fails,
-above).
+Not verified: no call was made to PayPal, sandbox or live; that needs a sandbox app's credentials
+(the authorization asked by `fetch()` and `void()` follows Orders v2's documentation).
 
 ## Responsibility
 

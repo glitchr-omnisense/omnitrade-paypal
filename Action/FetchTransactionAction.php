@@ -10,7 +10,7 @@ use Omnitrade\PayPal\Orders;
 use Omnitrade\Request\FetchTransaction;
 use Omnitrade\Request\Request;
 
-/** The order as PayPal has it now. */
+/** The order as PayPal has it now; an approved AUTHORIZE order authorized first (Api::authorized()). */
 final class FetchTransactionAction implements ActionInterface, ApiAwareInterface
 {
     /** @use ApiAwareTrait<Api> */
@@ -29,6 +29,7 @@ final class FetchTransactionAction implements ActionInterface, ApiAwareInterface
     public function execute(Request $request): void
     {
         \assert($request instanceof FetchTransaction);
-        $request->setResult(Orders::transaction($this->api->call('GET', '/v2/checkout/orders/'.rawurlencode($request->reference))));
+        // An approved AUTHORIZE order is authorized here: PayPal makes the authorization when asked.
+        $request->setResult(Orders::transaction($this->api->authorized($this->api->call('GET', '/v2/checkout/orders/'.rawurlencode($request->reference)))));
     }
 }

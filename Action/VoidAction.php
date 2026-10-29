@@ -33,6 +33,7 @@ final class VoidAction implements ActionInterface, ApiAwareInterface
         $order = null;
         try {
             $order = $this->api->call('GET', '/v2/checkout/orders/'.rawurlencode($request->reference));
+            $order = $this->api->authorized($order); // approved, not yet authorized: authorized, then voided
             $authorization = $order['purchase_units'][0]['payments']['authorizations'][0]['id'] ?? throw new ProviderException('paypal', 'The order holds no authorization to void.');
         } catch (ProviderException $e) {
             if (null !== $order) {
