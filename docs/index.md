@@ -74,7 +74,7 @@ omnitrade:
 | `VoidAuthorization` | yes, once the order holds an authorization (see below) |
 | `Refund` | yes |
 | `FetchTransaction` | yes (the order) |
-| `GetPaymentMethods` | yes (a fixed list) |
+| `GetPaymentMethods` | yes (a fixed list, Pay Later by country and currency) |
 | `Notify` | yes (verified by PayPal) |
 | `FetchOrder`, the catalogue, `AffiliateLink`, connected accounts, subscriptions | no |
 
@@ -147,8 +147,12 @@ The amount is the capture's, else the authorization's, else the unit's; `message
 status; `method` the first key of `payment_source` (`paypal`, `card`); `metadata` holds `capture`,
 `authorization`, `custom_id` and `payer_email` when present; `createdAt` its `create_time`.
 
-**Payment methods.** No call: always `paypal` (PayPal, wallet), `card` (Card (guest checkout),
-card), `paylater` (Pay Later, buy now pay later).
+**Payment methods.** No call: always `paypal` (PayPal, wallet) and `card` (Card (guest checkout),
+card); `paylater` (Pay Later, buy now pay later) where PayPal offers it - Australia, France,
+Germany, Italy, Spain, the United Kingdom and the United States, each in its currency (AUD, EUR,
+GBP, USD; [Pay Later](https://developer.paypal.com/docs/checkout/pay-later/)). A country outside
+those, or an amount in another currency than the country's (or than all of theirs, without a
+country), leaves it out; with neither, it is listed.
 
 **Notify.** The five `PAYPAL-TRANSMISSION-ID`, `PAYPAL-TRANSMISSION-TIME`,
 `PAYPAL-TRANSMISSION-SIG`, `PAYPAL-CERT-URL`, `PAYPAL-AUTH-ALGO` headers are required (one missing:
@@ -240,7 +244,7 @@ A missing `client_id` or `secret` is an `InvalidConfigException` when the gatewa
 
 ## Verified, and not
 
-Tested offline, 16 tests: `Tests/PayPalGatewayTest.php` (an order approved on PayPal's page then
+Tested offline, 17 tests: `Tests/PayPalGatewayTest.php` (Pay Later by country and currency, an order approved on PayPal's page then
 captured, a refund on the order's capture, a webhook verified by PayPal then read, an approved
 AUTHORIZE order authorized once, fetched AUTHORIZED, then voided) and
 `Tests/PayPalContractTest.php`, the family's conformance suite on an order authorized, then

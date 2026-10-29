@@ -138,6 +138,23 @@ final class PayPalGatewayTest extends TestCase
         self::assertSame(['POST /v2/checkout/orders/5O190127TN364715T/authorize PayPal-Request-Id: 5O190127TN364715T-authorize'], array_values(array_filter($calls, static fn ($c) => str_contains($c, '/authorize'))));
     }
 
+    /**
+     * Pay Later is offered in Australia, France, Germany, Italy, Spain, the United Kingdom and the
+     * United States, in their currency (PayPal's Pay Later, https://developer.paypal.com/docs/checkout/pay-later/):
+     * a country or an amount elsewhere leaves it out.
+     */
+    public function testPayLaterOnlyWhereItIsOffered(): void
+    {
+        $gateway = (new PayPalGatewayFactory(new MockHttpClient()))->create(['client_id' => 'cid', 'secret' => 'sec', 'sandbox' => true]);
+        $codes = static fn (array $methods): array => array_map(static fn ($m) => $m->code, $methods);
+
+        self::assertSame(['paypal', 'card', 'paylater'], $codes($gateway->paymentMethods(Money::of(5000, 'EUR'), 'FR')));
+        self::assertSame(['paypal', 'card', 'paylater'], $codes($gateway->paymentMethods()), 'nothing said: all of them');
+        self::assertSame(['paypal', 'card'], $codes($gateway->paymentMethods(Money::of(5000, 'EUR'), 'BE')));
+        self::assertSame(['paypal', 'card'], $codes($gateway->paymentMethods(Money::of(5000, 'CHF'))));
+        self::assertSame(['paypal', 'card'], $codes($gateway->paymentMethods(Money::of(5000, 'USD'), 'FR')), 'France\'s Pay Later is in euros');
+    }
+
     private static function order(string $status, string $intent, bool $captured = false): array
     {
         $unit = ['reference_id' => 'default', 'custom_id' => 'ORDER-1042', 'amount' => ['currency_code' => 'EUR', 'value' => '12.50']];
