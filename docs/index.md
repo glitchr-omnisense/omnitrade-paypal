@@ -229,7 +229,7 @@ Every failure is an `Omnitrade\Exception\ProviderException` whose `provider` is 
   `message`, else `error_description`; `providerCode` its `name` (`RESOURCE_NOT_FOUND`,
   `UNPROCESSABLE_ENTITY`), else `details[0].issue`, else `error`;
 - a body that is not JSON: `PayPal answered HTTP <status> with a body that is not JSON.`; a
-  network failure: `PayPal request failed: ...`, the exception as `previous`;
+  network failure: `PayPal request failed: ...`, a copy of the HTTP client's exception as `previous`;
 - no token: `PayPal did not answer for a token: ...`, or PayPal's `error_description` (`PayPal
   gave no token: check the client id and secret.` when it gives none), `error` as `providerCode`;
 - `PayPal created no order.`, `PayPal recorded no refund.`, `PayPal authorized nothing.`, `The order
@@ -241,6 +241,12 @@ Every failure is an `Omnitrade\Exception\ProviderException` whose `provider` is 
 A missing `client_id` or `secret` is an `InvalidConfigException` when the gateway is built;
 `FetchOrder`, the catalogue's requests, `AffiliateLink`, connected accounts and subscriptions raise
 `RequestNotSupportedException` before any call.
+
+No failure carries the client secret and the token: a network failure's message has them masked as
+`***` (the key parameters of a URL too), its previous is a copy of the HTTP client's exception (the
+same class and code, without its request), and no trace of the chain keeps its arguments, where the
+request's options stood ([No secret in a
+failure](https://github.com/glitchr-omnisense/omnitrade/blob/1.x/docs/errors.md#no-secret-in-a-failure)).
 
 ## Verified, and not
 
