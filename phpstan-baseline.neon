@@ -1,0 +1,589 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Cannot access offset ''authorizations'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/CaptureAction.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/CaptureAction.php
+
+		-
+			message: '#^Cannot access offset ''payments'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/CaptureAction.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: Action/CaptureAction.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: Action/CaptureAction.php
+
+		-
+			message: '#^Parameter \#2 \.\.\.\$values of function sprintf expects bool\|float\|int\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Action/CaptureAction.php
+
+		-
+			message: '#^Parameter \#3 \$providerCode of class Omnitrade\\Exception\\ProviderException constructor expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Action/CaptureAction.php
+
+		-
+			message: '#^Cannot access offset ''order_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/NotifyAction.php
+
+		-
+			message: '#^Cannot access offset ''reference_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/NotifyAction.php
+
+		-
+			message: '#^Cannot access offset ''related_ids'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/NotifyAction.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/NotifyAction.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 2
+			path: Action/NotifyAction.php
+
+		-
+			message: '#^Parameter \#1 \$order of static method Omnitrade\\PayPal\\Orders\:\:transaction\(\) expects array\<string, mixed\>, array\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Action/NotifyAction.php
+
+		-
+			message: '#^Parameter \#2 \$resource of static method Omnitrade\\PayPal\\Action\\NotifyAction\:\:tags\(\) expects array\<string, mixed\>, array\<mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Action/NotifyAction.php
+
+		-
+			message: '#^Cannot access offset ''amount'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/RefundAction.php
+
+		-
+			message: '#^Cannot access offset ''captures'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/RefundAction.php
+
+		-
+			message: '#^Cannot access offset ''currency_code'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/RefundAction.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/RefundAction.php
+
+		-
+			message: '#^Cannot access offset ''payments'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/RefundAction.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: Action/RefundAction.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 5
+			path: Action/RefundAction.php
+
+		-
+			message: '#^Parameter \$message of class Omnitrade\\Model\\Refund constructor expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Action/RefundAction.php
+
+		-
+			message: '#^Cannot access offset ''authorizations'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/VoidAction.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/VoidAction.php
+
+		-
+			message: '#^Cannot access offset ''payments'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Action/VoidAction.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: Action/VoidAction.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: Action/VoidAction.php
+
+		-
+			message: '#^Cannot access offset ''authorizations'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Api.php
+
+		-
+			message: '#^Cannot access offset ''description'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Api.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Api.php
+
+		-
+			message: '#^Cannot access offset ''issue'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Api.php
+
+		-
+			message: '#^Cannot access offset ''payments'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Api.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 4
+			path: Api.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: Api.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 4
+			path: Api.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Api\:\:call\(\) has parameter \$headers with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Api.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Api\:\:call\(\) should return array\<string, mixed\> but returns array\<mixed, mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: Api.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Api\:\:secrets\(\) should return list\<string\> but returns non\-empty\-array\<int\<0, max\>\|string, string\>\.$#'
+			identifier: return.type
+			count: 1
+			path: Api.php
+
+		-
+			message: '#^Parameter \#3 \$providerCode of class Omnitrade\\Exception\\ProviderException constructor expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: Api.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''amount'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''authorizations'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''captures'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''currency_code'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''custom_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''email_address'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''href'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''payments'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''rel'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset ''status'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: Orders.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: Orders.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 7
+			path: Orders.php
+
+		-
+			message: '#^Parameter \$message of class Omnitrade\\Model\\Transaction constructor expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Parameter \$redirectUrl of class Omnitrade\\Model\\Transaction constructor expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Orders.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: PayPalGatewayFactory.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 2
+			path: PayPalGatewayFactory.php
+
+		-
+			message: '#^Parameter \#5 \$webhookId of class Omnitrade\\PayPal\\Api constructor expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: PayPalGatewayFactory.php
+
+		-
+			message: '#^Cannot access offset ''authorizations'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Cannot access offset ''intent'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Cannot access offset ''transmission_sig'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Tests\\PayPalContractTest\:\:event\(\) should return string but returns string\|false\.$#'
+			identifier: return.type
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Tests\\PayPalContractTest\:\:headers\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Tests\\PayPalContractTest\:\:order\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Tests\\PayPalContractTest\:\:recordedAnswers\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Tests\\PayPalContractTest\:\:signedNotification\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Tests\\PayPalContractTest\:\:signedNotification\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Tests\\PayPalContractTest\:\:tamperedNotification\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Parameter \#1 \$body of class Symfony\\Component\\HttpClient\\Response\\MockResponse constructor expects iterable\<string\|Throwable\>\|string, string\|false given\.$#'
+			identifier: argument.type
+			count: 4
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Parameter \#1 \$json of function json_decode expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Parameter \#2 \$intent of static method Omnitrade\\PayPal\\Tests\\PayPalContractTest\:\:order\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Tests/PayPalContractTest.php
+
+		-
+			message: '#^Cannot access offset ''amount'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''custom_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''experience_context'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''intent'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''items'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''name'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''payments'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''paypal'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''return_url'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''transmission_sig'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''value'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 5
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access property \$code on mixed\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Method Omnitrade\\PayPal\\Tests\\PayPalGatewayTest\:\:order\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Parameter \#1 \$array of function array_filter expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Parameter \#1 \$body of class Symfony\\Component\\HttpClient\\Response\\MockResponse constructor expects iterable\<string\|Throwable\>\|string, string\|false given\.$#'
+			identifier: argument.type
+			count: 11
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Parameter \#1 \$body of method Omnitrade\\GatewayInterface\:\:notify\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Parameter \#1 \$haystack of function str_starts_with expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Parameter \#2 \$array of function implode expects array\<string\>, array given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Parameter \#2 \$haystack of static method PHPUnit\\Framework\\Assert\:\:assertContains\(\) expects iterable, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Parameter \#2 \$intent of static method Omnitrade\\PayPal\\Tests\\PayPalGatewayTest\:\:order\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Property Omnitrade\\PayPal\\Tests\\PayPalGatewayTest\:\:\$calls type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: Tests/PayPalGatewayTest.php
+
+		-
+			message: '#^Cannot access offset ''custom_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: Tests/PayPalTagsTest.php
+
+		-
+			message: '#^Cannot access offset ''reference_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: Tests/PayPalTagsTest.php
+
+		-
+			message: '#^Cannot access offset 0 on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: Tests/PayPalTagsTest.php
+
+		-
+			message: '#^Property Omnitrade\\PayPal\\Tests\\PayPalTagsTest\:\:\$calls \(list\<array\{string, string, array\<string, mixed\>\}\>\) does not accept non\-empty\-list\<array\{string, string, array\<mixed\>\}\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: Tests/PayPalTagsTest.php
+
+		-
+			message: '#^Parameter \#1 \$body of class Symfony\\Component\\HttpClient\\Response\\MockResponse constructor expects iterable\<string\|Throwable\>\|string, string\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: Tests/UnreachableChainTest.php

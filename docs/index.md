@@ -229,6 +229,13 @@ gives them, with its output ([installation](https://github.com/glitchr-omnisense
 In the core's Docker harness: `docker compose run --rm omnitrade purchase paypal --amount 1250`,
 then `capture paypal <order id>`.
 
+## Usage policy
+
+`policy.json` (named in `composer.json`'s `extra.omnisense.policy`) leaves the rate limits
+unknown: PayPal does not publish them. A 429 `RATE_LIMIT_REACHED` is a `RateLimitedException`,
+never retried, and PayPal's next calls wait for its `Retry-After`, unsent. Orders, authorizations,
+captures and refunds carry `PayPal-Request-Id` when the caller gives an idempotency key. See omnisense/omnitrade's [Usage policies and rate limits](https://github.com/glitchr-omnisense/omnitrade/blob/1.x/docs/policies.md).
+
 ## Errors
 
 Every failure is an `Omnitrade\Exception\ProviderException` whose `provider` is `paypal`:

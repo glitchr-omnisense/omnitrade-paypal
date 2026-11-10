@@ -33,13 +33,14 @@ final class PayPalGatewayFactory extends GatewayFactory
             'omnitrade.factory_name' => 'paypal',
             'omnitrade.factory_title' => 'PayPal',
             'omnitrade.required_options' => ['client_id', 'secret'],
+            'omnitrade.policy' => __DIR__.'/policy.json',
             'sandbox' => false,
             'webhook_id' => null,
             'timeout' => 15,
             'omnitrade.api' => function (Config $c) {
                 $http = $this->http ?? HttpClient::create();
 
-                return new Api($http, (string) $c['client_id'], (string) $c['secret'], (bool) $c['sandbox'], $c['webhook_id'] ?: null, (int) $c['timeout']);
+                return new Api($http, (string) $c['client_id'], (string) $c['secret'], (bool) $c['sandbox'], $c['webhook_id'] ?: null, (int) $c['timeout'], $c->backoff());
             },
             'omnitrade.action.purchase' => new PurchaseAction(),
             'omnitrade.action.authorize' => new AuthorizeAction(),

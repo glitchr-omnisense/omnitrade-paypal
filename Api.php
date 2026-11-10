@@ -2,9 +2,11 @@
 
 namespace Omnitrade\PayPal;
 
+use Omnisense\Contracts\Policy\Backoff;
 use Omnitrade\Exception\InvalidNotificationException;
 use Omnitrade\Exception\ProviderException;
 use Omnitrade\Http\Redaction;
+use Omnitrade\Http\Throttle;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -28,6 +30,8 @@ final class Api
         public readonly bool $sandbox = false,
         private readonly ?string $webhookId = null,
         private readonly int $timeout = 15,
+        /** The waits PayPal asks for (omnisense/contracts' Backoff): no call while one lasts, a 429 a RateLimitedException, never retried */
+        private readonly ?Backoff $backoff = null,
     ) {
     }
 
@@ -69,6 +73,7 @@ final class Api
      */
     public function call(string $method, string $path, ?array $body = null, array $headers = []): array
     {
+        Throttle::before($this->backoff);
         try {
             $response = $this->http->request($method, $this->base().$path, [
                 'headers' => ['Authorization' => 'Bearer '.$this->token(), 'Content-Type' => 'application/json', 'Prefer' => 'return=representation'] + $headers,
@@ -76,6 +81,7 @@ final class Api
                 'timeout' => $this->timeout,
             ]);
             $status = $response->getStatusCode();
+            $received = $response->getHeaders(false);
             $content = $response->getContent(false);
         } catch (HttpExceptionInterface|\JsonException $e) {
             $secrets = $this->secrets();
@@ -83,6 +89,7 @@ final class Api
             throw Redaction::withoutArguments(new ProviderException('paypal', 'PayPal request failed: '.Redaction::text($e->getMessage(), $secrets), null, Redaction::copy($e, $secrets)));
         }
         $data = '' === $content ? [] : json_decode($content, true);
+        Throttle::after($this->backoff, 'paypal', $status, $received, \is_array($data) && isset($data['message']) && \is_string($data['message']) ? 'PayPal answered 429: '.$data['message'] : '');
         if (!\is_array($data)) {
             throw Redaction::withoutArguments(new ProviderException('paypal', sprintf('PayPal answered HTTP %d with a body that is not JSON.', $status)));
         }

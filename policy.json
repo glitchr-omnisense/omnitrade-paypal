@@ -1,0 +1,38 @@
+{
+    "$schema": "https://github.com/glitchr-omnisense/contracts/blob/1.x/resources/usage-policy.schema.json",
+    "provider": "paypal",
+    "rateLimits": null,
+    "concurrency": null,
+    "rights": {
+        "commercial": "contract",
+        "openSourceRequired": false,
+        "caching": {
+            "permission": "contract",
+            "maxTtl": null
+        },
+        "storage": "contract",
+        "redistribution": "contract",
+        "attribution": {
+            "required": false,
+            "text": null,
+            "url": null,
+            "where": []
+        },
+        "licence": null
+    },
+    "requirements": {
+        "key": true,
+        "userAgent": {
+            "required": false,
+            "pattern": null
+        }
+    },
+    "provenance": {
+        "terms": "https://www.paypal.com/legalhub/paypal/useragreement-full",
+        "policy": "https://developer.paypal.com/api/rest/reference/rate-limiting/",
+        "verifiedAt": "2026-11-10",
+        "declaredBy": "maintainer",
+        "contact": "https://www.paypal.com/merchantsupport",
+        "notes": "PayPal does not publish its rate limits: it may limit traffic that looks abusive and answers 429 RATE_LIMIT_REACHED (limits unknown, hence null). A PayPal help article advises fewer than 50 requests a minute to avoid an IP block: advice, not a published quota, so not declared. The OAuth token is kept for its lifetime (PayPal advises it). Creates carry PayPal-Request-Id when the caller gives an idempotency key."
+    }
+}
