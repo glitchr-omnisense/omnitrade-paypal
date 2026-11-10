@@ -5,6 +5,7 @@ namespace Omnitrade\PayPal;
 use Omnitrade\Model\Money;
 use Omnitrade\Model\Payment;
 use Omnitrade\Model\Status;
+use Omnitrade\Model\Tags;
 use Omnitrade\Model\Transaction;
 
 /** A v2 order, as PayPal answers it, read as a Transaction; and a Payment written as one. */
@@ -64,8 +65,15 @@ final class Orders
         );
     }
 
-    /** @return array<string, mixed> a v2 order to create */
-    public static function create(Payment $payment, string $intent): array
+    /**
+     * A v2 order to create. PayPal keeps no metadata map: the gateway's site
+     * (Tags::site(), the "tags" option) is the purchase unit's reference_id
+     * (256 characters, "default" without one) - custom_id carries the
+     * merchant's reference already. Other tags are not sent.
+     *
+     * @return array<string, mixed>
+     */
+    public static function create(Payment $payment, string $intent, ?Tags $tags = null): array
     {
         $currency = $payment->amount->currency;
         $amount = ['currency_code' => $currency, 'value' => $payment->amount->decimal()];
@@ -89,7 +97,7 @@ final class Orders
             ]);
         }
         $unit = array_filter([
-            'reference_id' => 'default',
+            'reference_id' => null !== ($site = $tags?->site()) ? mb_substr($site, 0, 256) : 'default',
             'custom_id' => mb_substr($payment->reference, 0, 127),
             'invoice_id' => $payment->idempotencyKey ? mb_substr($payment->reference.'-'.$payment->idempotencyKey, 0, 127) : null,
             'description' => $payment->description ? mb_substr($payment->description, 0, 127) : null,

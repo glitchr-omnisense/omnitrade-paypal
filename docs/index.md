@@ -175,6 +175,14 @@ no certificate and makes one more call per webhook.
 `transaction`), the capture's `supplementary_data.related_ids.order_id` otherwise. `id` is the
 event's.
 
+## Tags
+
+PayPal keeps no metadata map. Of the `tags` option, only `site` is sent: as the purchase unit's
+`reference_id` (`default` without one; `custom_id` stays the merchant's reference) and as the
+refund's `custom_id`. `notify()` gives it back (`Notification::$tags`) on the `CHECKOUT.ORDER.*`
+events and on `PAYMENT.CAPTURE.REFUNDED`. The other capture and authorization events carry no
+site. See omnisense/omnitrade's [Several sites in one sandbox](https://github.com/glitchr-omnisense/omnitrade/blob/1.x/docs/several-sites.md).
+
 ## Example
 
 ```php

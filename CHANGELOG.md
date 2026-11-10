@@ -2,6 +2,13 @@
 
 ## Unreleased (1.x)
 
+### Added
+- The gateway's `site` tag (omnisense/omnitrade's `tags` option): the purchase unit's
+  `reference_id` (`default` without one) and the refund's `custom_id`; `notify()` gives it back on the
+  `CHECKOUT.ORDER.*` events and on `PAYMENT.CAPTURE.REFUNDED` (`Notification::$tags`). PayPal keeps
+  no metadata map: the other tags are not sent, and the capture and authorization events carry no
+  site. Tests on recorded requests (`PayPalTagsTest`).
+
 ### Fixed
 - A `ProviderException` no longer carries the client secret and the token. The message quoted the
   HTTP client's (the whole URL), the previous was the client's own exception, and every trace of the

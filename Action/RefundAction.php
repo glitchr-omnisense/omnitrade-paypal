@@ -5,6 +5,8 @@ namespace Omnitrade\PayPal\Action;
 use Omnitrade\Action\ActionInterface;
 use Omnitrade\Action\ApiAwareInterface;
 use Omnitrade\Action\ApiAwareTrait;
+use Omnitrade\Action\TagsAwareInterface;
+use Omnitrade\Action\TagsAwareTrait;
 use Omnitrade\Exception\ProviderException;
 use Omnitrade\Model\Money;
 use Omnitrade\Model\Refund as RefundModel;
@@ -14,10 +16,11 @@ use Omnitrade\Request\Refund;
 use Omnitrade\Request\Request;
 
 /** Money back on a capture: the reference is the order's (its first capture) or the capture's own. */
-final class RefundAction implements ActionInterface, ApiAwareInterface
+final class RefundAction implements ActionInterface, ApiAwareInterface, TagsAwareInterface
 {
     /** @use ApiAwareTrait<Api> */
     use ApiAwareTrait;
+    use TagsAwareTrait;
 
     public function __construct()
     {
@@ -51,6 +54,8 @@ final class RefundAction implements ActionInterface, ApiAwareInterface
         $body = array_filter([
             'amount' => $request->amount ? ['currency_code' => $request->amount->currency, 'value' => $request->amount->decimal()] : null,
             'note_to_payer' => $request->reason ? mb_substr($request->reason, 0, 255) : null,
+            // PayPal keeps no metadata: the refund's custom_id (127 characters) names the gateway's site.
+            'custom_id' => null !== ($site = $this->tags()->site()) ? mb_substr($site, 0, 127) : null,
         ]);
         $data = $this->api->call('POST', '/v2/payments/captures/'.rawurlencode($capture).'/refund', $body, $headers);
         if (empty($data['id'])) {

@@ -8,6 +8,7 @@ use Omnitrade\Action\ApiAwareTrait;
 use Omnitrade\Exception\ProviderException;
 use Omnitrade\Model\Notification;
 use Omnitrade\Model\Status;
+use Omnitrade\Model\Tags;
 use Omnitrade\PayPal\Api;
 use Omnitrade\PayPal\Orders;
 use Omnitrade\Request\Notify;
@@ -19,6 +20,11 @@ use Omnitrade\Request\Request;
  * PENDING (the money comes with capture()); PAYMENT.CAPTURE.COMPLETED is PAID;
  * DENIED is REFUSED; REFUNDED is REFUNDED. The reference is the order's id,
  * taken from the capture's related ids when the event is a capture's.
+ *
+ * $tags: the site the order was made for (its purchase unit's reference_id,
+ * set from the gateway's "tags" option) on the order events, and the
+ * refund's custom_id on PAYMENT.CAPTURE.REFUNDED. A capture's or an
+ * authorization's event carries neither: no tags.
  */
 final class NotifyAction implements ActionInterface, ApiAwareInterface
 {
@@ -71,6 +77,23 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
             transaction: $isOrder && isset($resource['id']) ? Orders::transaction($resource) : null,
             id: isset($event['id']) ? (string) $event['id'] : null,
             raw: $event,
+            tags: self::tags($type, $resource),
         ));
+    }
+
+    /**
+     * @param array<string, mixed> $resource
+     *
+     * @return array<string, string>
+     */
+    public static function tags(string $type, array $resource): array
+    {
+        $site = match (true) {
+            str_starts_with($type, 'CHECKOUT.ORDER.') => $resource['purchase_units'][0]['reference_id'] ?? null,
+            'PAYMENT.CAPTURE.REFUNDED' === $type => $resource['custom_id'] ?? null,
+            default => null,
+        };
+
+        return \is_string($site) && '' !== $site && 'default' !== $site ? [Tags::SITE => $site] : [];
     }
 }
