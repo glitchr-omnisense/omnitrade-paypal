@@ -15,6 +15,11 @@
   site. Tests on recorded requests (`PayPalTagsTest`).
 - `Omnitrade\PayPal\Api::authorized()`: an order as it stands once authorized.
 
+### Changed
+- PHPStan at level max with an empty baseline (151 errors that predated it): PayPal's answers read
+  through `Data` (internal: omnisense/contracts' `Http\Data` with reads that keep PHP's `(string)` and
+  `(int)` of a scalar), the arrays typed. Types only: no signature changed, no behaviour either.
+
 ### Fixed
 - A `ProviderException` no longer carries the client secret and the token. The message quoted the
   HTTP client's (the whole URL), the previous was the client's own exception, and every trace of the

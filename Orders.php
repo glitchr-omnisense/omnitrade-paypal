@@ -14,19 +14,22 @@ final class Orders
     /** @param array<string, mixed> $order */
     public static function transaction(array $order): Transaction
     {
-        $unit = $order['purchase_units'][0] ?? [];
-        $capture = $unit['payments']['captures'][0] ?? null;
-        $authorization = $unit['payments']['authorizations'][0] ?? null;
-        $amount = $capture['amount'] ?? $authorization['amount'] ?? $unit['amount'] ?? null;
-        $currency = strtoupper((string) ($amount['currency_code'] ?? 'EUR'));
-        $status = match ((string) ($order['status'] ?? '')) {
-            'COMPLETED' => match ((string) ($capture['status'] ?? 'COMPLETED')) {
+        $read = Data::of($order);
+        $unit = $read->data('purchase_units.0');
+        $capture = $unit->get('payments.captures.0');
+        $authorization = $unit->get('payments.authorizations.0');
+        $captured = Data::of($capture);
+        $authorized = Data::of($authorization);
+        $amount = $captured->get('amount') ?? $authorized->get('amount') ?? $unit->get('amount');
+        $currency = strtoupper(Data::cast(Data::of($amount)->get('currency_code') ?? 'EUR'));
+        $status = match ($read->text('status')) {
+            'COMPLETED' => match (Data::cast($captured->get('status') ?? 'COMPLETED')) {
                 'REFUNDED' => Status::REFUNDED,
                 'PARTIALLY_REFUNDED' => Status::PARTIALLY_REFUNDED,
                 'DECLINED', 'FAILED' => Status::REFUSED,
                 'PENDING' => Status::PENDING,
                 // An authorization not captured: where it stands (a voided one leaves the order COMPLETED).
-                default => $authorization && !$capture ? match ((string) ($authorization['status'] ?? 'CREATED')) {
+                default => $authorization && !$capture ? match (Data::cast($authorized->get('status') ?? 'CREATED')) {
                     'VOIDED' => Status::CANCELLED,
                     'EXPIRED' => Status::EXPIRED,
                     'DENIED' => Status::REFUSED,
@@ -36,31 +39,31 @@ final class Orders
             'VOIDED' => Status::CANCELLED,
             default => Status::PENDING,
         };
-        if (Status::PAID === $status && $authorization && !$capture && 'CREATED' === ($authorization['status'] ?? null)) {
+        if (Status::PAID === $status && $authorization && !$capture && 'CREATED' === $authorized->get('status')) {
             $status = Status::AUTHORIZED;
         }
         $approve = null;
-        foreach ($order['links'] ?? [] as $link) {
-            if (\in_array($link['rel'] ?? null, ['payer-action', 'approve'], true)) {
-                $approve = $link['href'] ?? null;
+        foreach ($read->list('links') as $link) {
+            if (\in_array($link->get('rel'), ['payer-action', 'approve'], true)) {
+                $approve = $link->textOrNull('href');
             }
         }
 
         return new Transaction(
             provider: 'paypal',
-            reference: (string) $order['id'],
+            reference: $read->text('id'),
             status: $status,
-            amount: \is_array($amount) && isset($amount['value']) ? Money::fromDecimal((string) $amount['value'], $currency) : null,
+            amount: \is_array($amount) && isset($amount['value']) ? Money::fromDecimal(Data::cast($amount['value']), $currency) : null,
             redirectUrl: Status::PENDING === $status ? $approve : null,
-            message: $order['status'] ?? null,
+            message: $read->textOrNull('status'),
             method: isset($order['payment_source']) ? (string) array_key_first((array) $order['payment_source']) : null,
             metadata: array_filter([
-                'capture' => $capture['id'] ?? null,
-                'authorization' => $authorization['id'] ?? null,
-                'custom_id' => $unit['custom_id'] ?? null,
-                'payer_email' => $order['payer']['email_address'] ?? null,
+                'capture' => $captured->get('id'),
+                'authorization' => $authorized->get('id'),
+                'custom_id' => $unit->get('custom_id'),
+                'payer_email' => $read->get('payer.email_address'),
             ]),
-            createdAt: isset($order['create_time']) ? new \DateTimeImmutable((string) $order['create_time']) : null,
+            createdAt: $read->has('create_time') ? new \DateTimeImmutable($read->text('create_time')) : null,
             raw: $order,
         );
     }

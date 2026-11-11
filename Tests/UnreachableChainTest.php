@@ -50,7 +50,7 @@ final class UnreachableChainTest extends TestCase
     {
         self::assertClean($call, static function (string $method, string $url): MockResponse {
             if (str_contains($url, '/v1/oauth2/token')) {
-                return new MockResponse(json_encode(['access_token' => 'issued-token-paypal-9d3e57', 'expires_in' => 3600]));
+                return new MockResponse(json_encode(['access_token' => 'issued-token-paypal-9d3e57', 'expires_in' => 3600], \JSON_THROW_ON_ERROR));
             }
 
             throw new TransportException(\sprintf('Could not resolve host: x for "%s".', $url), 6);
@@ -60,7 +60,7 @@ final class UnreachableChainTest extends TestCase
     #[DataProvider('calls')]
     public function testAnErrorAnswerKeepsNoSecretInTheTraces(\Closure $call): void
     {
-        self::assertClean($call, static fn (string $method, string $url): MockResponse => str_contains($url, '/v1/oauth2/token') ? new MockResponse(json_encode(['access_token' => 'issued-token-paypal-9d3e57', 'expires_in' => 3600])) : new MockResponse('{"message":"down"}', ['http_code' => 500]));
+        self::assertClean($call, static fn (string $method, string $url): MockResponse => str_contains($url, '/v1/oauth2/token') ? new MockResponse(json_encode(['access_token' => 'issued-token-paypal-9d3e57', 'expires_in' => 3600], \JSON_THROW_ON_ERROR)) : new MockResponse('{"message":"down"}', ['http_code' => 500]));
     }
 
     private static function assertClean(\Closure $call, \Closure $responses): void

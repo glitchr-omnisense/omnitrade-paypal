@@ -4,7 +4,9 @@ namespace Omnitrade\PayPal\Tests;
 
 use Omnitrade\Exception\InvalidNotificationException;
 use Omnitrade\Model\Money;
+use Omnitrade\Model\PaymentMethod;
 use Omnitrade\Model\Status;
+use Omnitrade\PayPal\Data;
 use Omnitrade\PayPal\PayPalGatewayFactory;
 use Omnitrade\Tests\Fixtures;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +15,7 @@ use Symfony\Component\HttpClient\Response\MockResponse;
 
 final class PayPalGatewayTest extends TestCase
 {
-    /** @var list<array{string, string, array}> */
+    /** @var list<array{string, string, array<mixed>}> */
     private array $calls = [];
     private bool $captured = false;
     private int $tokens = 0;
@@ -29,17 +31,17 @@ final class PayPalGatewayTest extends TestCase
             if ('/v1/oauth2/token' === $path) {
                 ++$this->tokens;
 
-                return new MockResponse(json_encode(['access_token' => 'A21AA', 'expires_in' => 32400]));
+                return new MockResponse(json_encode(['access_token' => 'A21AA', 'expires_in' => 32400], \JSON_THROW_ON_ERROR));
             }
-            self::assertContains('Authorization: Bearer A21AA', $options['headers']);
+            self::assertContains('Authorization: Bearer A21AA', Data::texts($options['headers'] ?? []));
 
             return match (true) {
-                'POST' === $method && '/v2/checkout/orders' === $path => new MockResponse(json_encode(self::order('CREATED', $sent['intent'] ?? 'CAPTURE'))),
-                'GET' === $method && '/v2/checkout/orders/5O190127TN364715T' === $path => new MockResponse(json_encode($this->captured ? self::order('COMPLETED', 'CAPTURE', true) : self::order('APPROVED', 'CAPTURE'))),
-                'POST' === $method && '/v2/checkout/orders/5O190127TN364715T/capture' === $path => (function () { $this->captured = true; return new MockResponse(json_encode(self::order('COMPLETED', 'CAPTURE', true))); })(),
-                'POST' === $method && '/v2/payments/captures/3C679366HH908993F/refund' === $path => new MockResponse(json_encode(['id' => '1JU08902781691411', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'EUR', 'value' => '5.00']])),
-                'POST' === $method && '/v1/notifications/verify-webhook-signature' === $path => new MockResponse(json_encode(['verification_status' => 'SUCCESS' === ($sent['transmission_sig'] ?? null) ? 'SUCCESS' : 'FAILURE'])),
-                default => new MockResponse(json_encode(['name' => 'RESOURCE_NOT_FOUND', 'message' => 'No such resource: '.$method.' '.$path]), ['http_code' => 404]),
+                'POST' === $method && '/v2/checkout/orders' === $path => new MockResponse(json_encode(self::order('CREATED', Data::cast(Data::of($sent)->get('intent') ?? 'CAPTURE')), \JSON_THROW_ON_ERROR)),
+                'GET' === $method && '/v2/checkout/orders/5O190127TN364715T' === $path => new MockResponse(json_encode($this->captured ? self::order('COMPLETED', 'CAPTURE', true) : self::order('APPROVED', 'CAPTURE'), \JSON_THROW_ON_ERROR)),
+                'POST' === $method && '/v2/checkout/orders/5O190127TN364715T/capture' === $path => (function () { $this->captured = true; return new MockResponse(json_encode(self::order('COMPLETED', 'CAPTURE', true), \JSON_THROW_ON_ERROR)); })(),
+                'POST' === $method && '/v2/payments/captures/3C679366HH908993F/refund' === $path => new MockResponse(json_encode(['id' => '1JU08902781691411', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'EUR', 'value' => '5.00']], \JSON_THROW_ON_ERROR)),
+                'POST' === $method && '/v1/notifications/verify-webhook-signature' === $path => new MockResponse(json_encode(['verification_status' => 'SUCCESS' === Data::of($sent)->get('transmission_sig') ? 'SUCCESS' : 'FAILURE'], \JSON_THROW_ON_ERROR)),
+                default => new MockResponse(json_encode(['name' => 'RESOURCE_NOT_FOUND', 'message' => 'No such resource: '.$method.' '.$path], \JSON_THROW_ON_ERROR), ['http_code' => 404]),
             };
         });
 
@@ -56,10 +58,10 @@ final class PayPalGatewayTest extends TestCase
         self::assertSame('https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T', $transaction->redirectUrl);
         [, , $sent] = $this->calls[1];
         self::assertSame('CAPTURE', $sent['intent']);
-        self::assertSame('12.50', $sent['purchase_units'][0]['amount']['value']);
-        self::assertSame('ORDER-1042', $sent['purchase_units'][0]['custom_id']);
-        self::assertSame('Dix heures', $sent['purchase_units'][0]['items'][0]['name']);
-        self::assertSame('https://shop.example/retour', $sent['payment_source']['paypal']['experience_context']['return_url']);
+        self::assertSame('12.50', Data::of($sent)->get('purchase_units.0.amount.value'));
+        self::assertSame('ORDER-1042', Data::of($sent)->get('purchase_units.0.custom_id'));
+        self::assertSame('Dix heures', Data::of($sent)->get('purchase_units.0.items.0.name'));
+        self::assertSame('https://shop.example/retour', Data::of($sent)->get('payment_source.paypal.experience_context.return_url'));
         self::assertSame(1, $this->tokens, 'one token for the session');
 
         // The buyer is back: the money is taken, and taking it twice is harmless.
@@ -81,14 +83,14 @@ final class PayPalGatewayTest extends TestCase
         self::assertSame(Status::REFUNDED, $refund->status);
         self::assertSame(500, $refund->amount->amount);
         $post = array_values(array_filter($this->calls, fn ($c) => str_ends_with($c[1], '/refund')))[0];
-        self::assertSame('5.00', $post[2]['amount']['value']);
+        self::assertSame('5.00', Data::of($post[2])->get('amount.value'));
         self::assertSame('Trop perçu', $post[2]['note_to_payer']);
     }
 
     public function testANotificationIsVerifiedByPayPalThenRead(): void
     {
         $gateway = $this->gateway();
-        $event = json_encode(['id' => 'WH-EVT-1', 'event_type' => 'PAYMENT.CAPTURE.COMPLETED', 'resource' => ['id' => '3C679366HH908993F', 'status' => 'COMPLETED', 'supplementary_data' => ['related_ids' => ['order_id' => '5O190127TN364715T']]]]);
+        $event = json_encode(['id' => 'WH-EVT-1', 'event_type' => 'PAYMENT.CAPTURE.COMPLETED', 'resource' => ['id' => '3C679366HH908993F', 'status' => 'COMPLETED', 'supplementary_data' => ['related_ids' => ['order_id' => '5O190127TN364715T']]]], \JSON_THROW_ON_ERROR);
         $headers = fn (string $sig) => ['PAYPAL-TRANSMISSION-ID' => 't1', 'PAYPAL-TRANSMISSION-TIME' => '2026-10-01T10:00:00Z', 'PAYPAL-TRANSMISSION-SIG' => $sig, 'PAYPAL-CERT-URL' => 'https://api.sandbox.paypal.com/cert', 'PAYPAL-AUTH-ALGO' => 'SHA256withRSA'];
 
         $notification = $gateway->notify($event, $headers('SUCCESS'));
@@ -113,21 +115,23 @@ final class PayPalGatewayTest extends TestCase
         $order = static function (string $state): array {
             $order = self::order('APPROVED' === $state ? 'APPROVED' : 'COMPLETED', 'AUTHORIZE');
             if ('APPROVED' !== $state) {
-                $order['purchase_units'][0]['payments'] = ['authorizations' => [['id' => '0VF52814937998046', 'status' => $state, 'amount' => ['currency_code' => 'EUR', 'value' => '12.50']]]];
+                $unit = Data::of($order)->fields('purchase_units.0');
+                $unit['payments'] = ['authorizations' => [['id' => '0VF52814937998046', 'status' => $state, 'amount' => ['currency_code' => 'EUR', 'value' => '12.50']]]];
+                $order['purchase_units'] = [$unit];
             }
 
             return $order;
         };
         $http = new MockHttpClient(static function (string $method, string $url, array $options) use (&$state, &$calls, $order): MockResponse {
             $path = (string) parse_url($url, \PHP_URL_PATH);
-            $calls[] = $method.' '.$path.('POST' === $method && str_ends_with($path, '/authorize') ? ' '.implode('|', array_filter($options['headers'], static fn ($h) => str_starts_with($h, 'PayPal-Request-Id'))) : '');
+            $calls[] = $method.' '.$path.('POST' === $method && str_ends_with($path, '/authorize') ? ' '.implode('|', array_filter(Data::texts($options['headers'] ?? []), static fn (string $h) => str_starts_with($h, 'PayPal-Request-Id'))) : '');
 
             return match (true) {
-                '/v1/oauth2/token' === $path => new MockResponse(json_encode(['access_token' => 'A21AA', 'expires_in' => 32400])),
-                'GET' === $method && '/v2/checkout/orders/5O190127TN364715T' === $path => new MockResponse(json_encode($order($state))),
-                'POST' === $method && '/v2/checkout/orders/5O190127TN364715T/authorize' === $path && 'APPROVED' === $state => (static function () use (&$state, $order) { $state = 'CREATED'; return new MockResponse(json_encode($order($state))); })(),
+                '/v1/oauth2/token' === $path => new MockResponse(json_encode(['access_token' => 'A21AA', 'expires_in' => 32400], \JSON_THROW_ON_ERROR)),
+                'GET' === $method && '/v2/checkout/orders/5O190127TN364715T' === $path => new MockResponse(json_encode($order($state), \JSON_THROW_ON_ERROR)),
+                'POST' === $method && '/v2/checkout/orders/5O190127TN364715T/authorize' === $path && 'APPROVED' === $state => (static function () use (&$state, $order) { $state = 'CREATED'; return new MockResponse(json_encode($order($state), \JSON_THROW_ON_ERROR)); })(),
                 'POST' === $method && '/v2/payments/authorizations/0VF52814937998046/void' === $path && 'CREATED' === $state => (static function () use (&$state) { $state = 'VOIDED'; return new MockResponse('', ['http_code' => 204]); })(),
-                default => new MockResponse(json_encode(['name' => 'UNPROCESSABLE_ENTITY', 'message' => 'Not now: '.$method.' '.$path]), ['http_code' => 422]),
+                default => new MockResponse(json_encode(['name' => 'UNPROCESSABLE_ENTITY', 'message' => 'Not now: '.$method.' '.$path], \JSON_THROW_ON_ERROR), ['http_code' => 422]),
             };
         });
         $gateway = (new PayPalGatewayFactory($http))->create(['client_id' => 'cid', 'secret' => 'sec', 'sandbox' => true]);
@@ -146,15 +150,25 @@ final class PayPalGatewayTest extends TestCase
     public function testPayLaterOnlyWhereItIsOffered(): void
     {
         $gateway = (new PayPalGatewayFactory(new MockHttpClient()))->create(['client_id' => 'cid', 'secret' => 'sec', 'sandbox' => true]);
-        $codes = static fn (array $methods): array => array_map(static fn ($m) => $m->code, $methods);
 
-        self::assertSame(['paypal', 'card', 'paylater'], $codes($gateway->paymentMethods(Money::of(5000, 'EUR'), 'FR')));
-        self::assertSame(['paypal', 'card', 'paylater'], $codes($gateway->paymentMethods()), 'nothing said: all of them');
-        self::assertSame(['paypal', 'card'], $codes($gateway->paymentMethods(Money::of(5000, 'EUR'), 'BE')));
-        self::assertSame(['paypal', 'card'], $codes($gateway->paymentMethods(Money::of(5000, 'CHF'))));
-        self::assertSame(['paypal', 'card'], $codes($gateway->paymentMethods(Money::of(5000, 'USD'), 'FR')), 'France\'s Pay Later is in euros');
+        self::assertSame(['paypal', 'card', 'paylater'], self::codes($gateway->paymentMethods(Money::of(5000, 'EUR'), 'FR')));
+        self::assertSame(['paypal', 'card', 'paylater'], self::codes($gateway->paymentMethods()), 'nothing said: all of them');
+        self::assertSame(['paypal', 'card'], self::codes($gateway->paymentMethods(Money::of(5000, 'EUR'), 'BE')));
+        self::assertSame(['paypal', 'card'], self::codes($gateway->paymentMethods(Money::of(5000, 'CHF'))));
+        self::assertSame(['paypal', 'card'], self::codes($gateway->paymentMethods(Money::of(5000, 'USD'), 'FR')), 'France\'s Pay Later is in euros');
     }
 
+    /**
+     * @param array<PaymentMethod> $methods
+     *
+     * @return array<string>
+     */
+    private static function codes(array $methods): array
+    {
+        return array_map(static fn (PaymentMethod $m) => $m->code, $methods);
+    }
+
+    /** @return array<string, mixed> */
     private static function order(string $status, string $intent, bool $captured = false): array
     {
         $unit = ['reference_id' => 'default', 'custom_id' => 'ORDER-1042', 'amount' => ['currency_code' => 'EUR', 'value' => '12.50']];

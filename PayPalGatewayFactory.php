@@ -40,7 +40,7 @@ final class PayPalGatewayFactory extends GatewayFactory
             'omnitrade.api' => function (Config $c) {
                 $http = $this->http ?? HttpClient::create();
 
-                return new Api($http, (string) $c['client_id'], (string) $c['secret'], (bool) $c['sandbox'], $c['webhook_id'] ?: null, (int) $c['timeout'], $c->backoff());
+                return new Api($http, Data::cast($c['client_id']), Data::cast($c['secret']), (bool) $c['sandbox'], Data::cast($c['webhook_id']) ?: null, Data::integer($c['timeout']), $c->backoff());
             },
             'omnitrade.action.purchase' => new PurchaseAction(),
             'omnitrade.action.authorize' => new AuthorizeAction(),

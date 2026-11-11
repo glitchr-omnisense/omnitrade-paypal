@@ -3,6 +3,7 @@
 namespace Omnitrade\PayPal\Tests;
 
 use Omnitrade\GatewayFactoryInterface;
+use Omnitrade\PayPal\Data;
 use Omnitrade\PayPal\PayPalGatewayFactory;
 use Omnitrade\Testing\GatewayContractTests;
 use PHPUnit\Framework\TestCase;
@@ -37,6 +38,7 @@ final class PayPalContractTest extends TestCase
         return 'CAP-3C679366HH908993F';
     }
 
+    /** @return array<string, array<mixed>|MockResponse|callable> */
     protected function recordedAnswers(): array
     {
         $authorization = 'CREATED';
@@ -44,14 +46,14 @@ final class PayPalContractTest extends TestCase
 
         return [
             'POST /v1/oauth2/token' => ['access_token' => 'A21AA', 'expires_in' => 32400],
-            "POST $orders" => static fn (string $method, string $url, array $options) => new MockResponse(json_encode(self::order('CREATED', json_decode($options['body'], true)['intent'] ?? 'CAPTURE'))),
+            "POST $orders" => static fn (string $method, string $url, array $options) => new MockResponse(json_encode(self::order('CREATED', Data::cast(Data::of(json_decode(Data::cast($options['body'] ?? null), true))->get('intent') ?? 'CAPTURE')), \JSON_THROW_ON_ERROR)),
             "GET $orders/".self::ORDER => static function () use (&$authorization): MockResponse {
-                return new MockResponse(json_encode(self::order('COMPLETED', 'AUTHORIZE', $authorization)));
+                return new MockResponse(json_encode(self::order('COMPLETED', 'AUTHORIZE', $authorization), \JSON_THROW_ON_ERROR));
             },
             'POST /v2/payments/authorizations/0VF52814937998046/capture' => static function () use (&$authorization): MockResponse {
                 $authorization = 'CAPTURED';
 
-                return new MockResponse(json_encode(['id' => '3C679366HH908993F', 'status' => 'COMPLETED']));
+                return new MockResponse(json_encode(['id' => '3C679366HH908993F', 'status' => 'COMPLETED'], \JSON_THROW_ON_ERROR));
             },
             'POST /v2/payments/authorizations/0VF52814937998046/void' => static function () use (&$authorization): MockResponse {
                 $authorization = 'VOIDED';
@@ -59,15 +61,17 @@ final class PayPalContractTest extends TestCase
                 return new MockResponse('', ['http_code' => 204]);
             },
             'POST /v2/payments/captures/CAP-3C679366HH908993F/refund' => ['id' => '1JU08902781691411', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'EUR', 'value' => '5.00']],
-            'POST /v1/notifications/verify-webhook-signature' => static fn (string $method, string $url, array $options) => new MockResponse(json_encode(['verification_status' => 'SUCCESS' === (json_decode($options['body'], true)['transmission_sig'] ?? null) ? 'SUCCESS' : 'FAILURE'])),
+            'POST /v1/notifications/verify-webhook-signature' => static fn (string $method, string $url, array $options) => new MockResponse(json_encode(['verification_status' => 'SUCCESS' === Data::of(json_decode(Data::cast($options['body'] ?? null), true))->get('transmission_sig') ? 'SUCCESS' : 'FAILURE'], \JSON_THROW_ON_ERROR)),
         ];
     }
 
-    protected function signedNotification(): ?array
+    /** @return array{0: string, 1: array<string, string>} */
+    protected function signedNotification(): array
     {
         return [self::event(), self::headers('SUCCESS')];
     }
 
+    /** @return array{0: string, 1: array<string, string>} */
     protected function tamperedNotification(): array
     {
         return [self::event(), self::headers('forged')];
@@ -75,24 +79,27 @@ final class PayPalContractTest extends TestCase
 
     private static function event(): string
     {
-        return json_encode(['id' => 'WH-EVT-1', 'event_type' => 'PAYMENT.CAPTURE.COMPLETED', 'resource' => ['id' => '3C679366HH908993F', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'EUR', 'value' => '12.50'], 'supplementary_data' => ['related_ids' => ['order_id' => self::ORDER]]]]);
+        return json_encode(['id' => 'WH-EVT-1', 'event_type' => 'PAYMENT.CAPTURE.COMPLETED', 'resource' => ['id' => '3C679366HH908993F', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'EUR', 'value' => '12.50'], 'supplementary_data' => ['related_ids' => ['order_id' => self::ORDER]]]], \JSON_THROW_ON_ERROR);
     }
 
+    /** @return array<string, string> */
     private static function headers(string $signature): array
     {
         return ['PAYPAL-TRANSMISSION-ID' => 't1', 'PAYPAL-TRANSMISSION-TIME' => '2026-10-01T10:00:00Z', 'PAYPAL-TRANSMISSION-SIG' => $signature, 'PAYPAL-CERT-URL' => 'https://api.sandbox.paypal.com/cert', 'PAYPAL-AUTH-ALGO' => 'SHA256withRSA'];
     }
 
     /** An order; AUTHORIZE ones once approved carry their authorization, CAPTURED along with its capture. */
+    /** @return array<string, mixed> */
     private static function order(string $status, string $intent, ?string $authorization = null): array
     {
         $amount = ['currency_code' => 'EUR', 'value' => '12.50'];
         $unit = ['reference_id' => 'default', 'custom_id' => 'ORDER-1042', 'amount' => $amount];
         if (null !== $authorization) {
-            $unit['payments']['authorizations'] = [['id' => '0VF52814937998046', 'status' => $authorization, 'amount' => $amount]];
+            $payments = ['authorizations' => [['id' => '0VF52814937998046', 'status' => $authorization, 'amount' => $amount]]];
             if ('CAPTURED' === $authorization) {
-                $unit['payments']['captures'] = [['id' => '3C679366HH908993F', 'status' => 'COMPLETED', 'amount' => $amount]];
+                $payments['captures'] = [['id' => '3C679366HH908993F', 'status' => 'COMPLETED', 'amount' => $amount]];
             }
+            $unit['payments'] = $payments;
         }
 
         return ['id' => self::ORDER, 'intent' => $intent, 'status' => $status, 'create_time' => '2026-10-01T10:00:00Z', 'purchase_units' => [$unit],

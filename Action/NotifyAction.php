@@ -10,6 +10,7 @@ use Omnitrade\Model\Notification;
 use Omnitrade\Model\Status;
 use Omnitrade\Model\Tags;
 use Omnitrade\PayPal\Api;
+use Omnitrade\PayPal\Data;
 use Omnitrade\PayPal\Orders;
 use Omnitrade\Request\Notify;
 use Omnitrade\Request\Request;
@@ -55,15 +56,15 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         if (!\is_array($event) || !\is_string($event['event_type'] ?? null)) {
             throw new ProviderException('paypal', 'The notification is not a PayPal event.');
         }
-        $resource = \is_array($event['resource'] ?? null) ? $event['resource'] : [];
+        $resource = Data::of($event)->fields('resource');
         $type = $event['event_type'];
         $isOrder = str_starts_with($type, 'CHECKOUT.ORDER.');
-        $reference = $isOrder ? ($resource['id'] ?? null) : ($resource['supplementary_data']['related_ids']['order_id'] ?? null);
+        $reference = $isOrder ? ($resource['id'] ?? null) : Data::of($resource)->get('supplementary_data.related_ids.order_id');
 
         $request->setResult(new Notification(
             provider: 'paypal',
             event: $type,
-            reference: null !== $reference ? (string) $reference : null,
+            reference: Data::castOrNull($reference),
             status: match ($type) {
                 'CHECKOUT.ORDER.APPROVED' => Status::PENDING,
                 'CHECKOUT.ORDER.COMPLETED', 'PAYMENT.CAPTURE.COMPLETED' => Status::PAID,
@@ -75,7 +76,7 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
                 default => null,
             },
             transaction: $isOrder && isset($resource['id']) ? Orders::transaction($resource) : null,
-            id: isset($event['id']) ? (string) $event['id'] : null,
+            id: Data::of($event)->textOrNull('id'),
             raw: $event,
             tags: self::tags($type, $resource),
         ));
@@ -89,7 +90,7 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
     public static function tags(string $type, array $resource): array
     {
         $site = match (true) {
-            str_starts_with($type, 'CHECKOUT.ORDER.') => $resource['purchase_units'][0]['reference_id'] ?? null,
+            str_starts_with($type, 'CHECKOUT.ORDER.') => Data::of($resource)->get('purchase_units.0.reference_id'),
             'PAYMENT.CAPTURE.REFUNDED' === $type => $resource['custom_id'] ?? null,
             default => null,
         };

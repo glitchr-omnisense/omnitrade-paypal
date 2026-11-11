@@ -7,6 +7,7 @@ use Omnitrade\Action\ApiAwareInterface;
 use Omnitrade\Action\ApiAwareTrait;
 use Omnitrade\Exception\ProviderException;
 use Omnitrade\PayPal\Api;
+use Omnitrade\PayPal\Data;
 use Omnitrade\PayPal\Orders;
 use Omnitrade\Request\Request;
 use Omnitrade\Request\VoidAuthorization;
@@ -34,14 +35,14 @@ final class VoidAction implements ActionInterface, ApiAwareInterface
         try {
             $order = $this->api->call('GET', '/v2/checkout/orders/'.rawurlencode($request->reference));
             $order = $this->api->authorized($order); // approved, not yet authorized: authorized, then voided
-            $authorization = $order['purchase_units'][0]['payments']['authorizations'][0]['id'] ?? throw new ProviderException('paypal', 'The order holds no authorization to void.');
+            $authorization = Data::of($order)->get('purchase_units.0.payments.authorizations.0.id') ?? throw new ProviderException('paypal', 'The order holds no authorization to void.');
         } catch (ProviderException $e) {
             if (null !== $order) {
                 throw $e;
             }
             $authorization = $request->reference; // not an order: an authorization id
         }
-        $this->api->call('POST', '/v2/payments/authorizations/'.rawurlencode((string) $authorization).'/void');
+        $this->api->call('POST', '/v2/payments/authorizations/'.rawurlencode(Data::cast($authorization)).'/void');
         if (null !== $order) {
             $request->setResult(Orders::transaction($this->api->call('GET', '/v2/checkout/orders/'.rawurlencode($request->reference))));
         } else {

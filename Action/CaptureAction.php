@@ -8,6 +8,7 @@ use Omnitrade\Action\ApiAwareTrait;
 use Omnitrade\Exception\ProviderException;
 use Omnitrade\Model\Status;
 use Omnitrade\PayPal\Api;
+use Omnitrade\PayPal\Data;
 use Omnitrade\PayPal\Orders;
 use Omnitrade\Request\Capture;
 use Omnitrade\Request\Request;
@@ -46,13 +47,13 @@ final class CaptureAction implements ActionInterface, ApiAwareInterface
             return;
         }
         if (!\in_array($order['status'] ?? null, ['APPROVED', 'COMPLETED'], true)) {
-            throw new ProviderException('paypal', sprintf('The order is %s: the buyer has not approved it.', $order['status'] ?? 'unknown'), $order['status'] ?? null);
+            throw new ProviderException('paypal', sprintf('The order is %s: the buyer has not approved it.', Data::cast($order['status'] ?? 'unknown')), Data::castOrNull($order['status'] ?? null));
         }
 
         if ('AUTHORIZE' === ($order['intent'] ?? 'CAPTURE')) {
-            $authorization = $this->api->authorized($order)['purchase_units'][0]['payments']['authorizations'][0]['id'] ?? throw new ProviderException('paypal', 'PayPal authorized nothing.');
+            $authorization = Data::of($this->api->authorized($order))->get('purchase_units.0.payments.authorizations.0.id') ?? throw new ProviderException('paypal', 'PayPal authorized nothing.');
             $body = $request->amount ? ['amount' => ['currency_code' => $request->amount->currency, 'value' => $request->amount->decimal()], 'final_capture' => true] : [];
-            $this->api->call('POST', '/v2/payments/authorizations/'.rawurlencode((string) $authorization).'/capture', $body, $headers);
+            $this->api->call('POST', '/v2/payments/authorizations/'.rawurlencode(Data::cast($authorization)).'/capture', $body, $headers);
         } else {
             $this->api->call('POST', '/v2/checkout/orders/'.rawurlencode($request->reference).'/capture', [], $headers);
         }

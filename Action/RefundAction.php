@@ -12,6 +12,7 @@ use Omnitrade\Model\Money;
 use Omnitrade\Model\Refund as RefundModel;
 use Omnitrade\Model\Status;
 use Omnitrade\PayPal\Api;
+use Omnitrade\PayPal\Data;
 use Omnitrade\Request\Refund;
 use Omnitrade\Request\Request;
 
@@ -41,10 +42,11 @@ final class RefundAction implements ActionInterface, ApiAwareInterface, TagsAwar
             // An order id and a capture id look alike: ask for the order first; a capture answers 404 there.
             try {
                 $order = $this->api->call('GET', '/v2/checkout/orders/'.rawurlencode($capture));
-                $first = $order['purchase_units'][0]['payments']['captures'][0] ?? null;
+                $first = Data::of($order)->get('purchase_units.0.payments.captures.0');
                 if (null !== $first) {
-                    $capture = (string) $first['id'];
-                    $currency ??= strtoupper((string) ($first['amount']['currency_code'] ?? 'EUR'));
+                    $captured = Data::of($first);
+                    $capture = $captured->text('id');
+                    $currency ??= strtoupper(Data::cast($captured->get('amount.currency_code') ?? 'EUR'));
                 }
             } catch (ProviderException) {
                 // Not an order: the reference is the capture's.
@@ -65,11 +67,11 @@ final class RefundAction implements ActionInterface, ApiAwareInterface, TagsAwar
 
         $request->setResult(new RefundModel(
             provider: 'paypal',
-            reference: (string) $data['id'],
-            amount: \is_array($amount) && isset($amount['value']) ? Money::fromDecimal((string) $amount['value'], (string) ($amount['currency_code'] ?? $currency ?? 'EUR')) : ($request->amount ?? Money::of(0, $currency ?? 'EUR')),
+            reference: Data::cast($data['id']),
+            amount: \is_array($amount) && isset($amount['value']) ? Money::fromDecimal(Data::cast($amount['value']), Data::cast($amount['currency_code'] ?? $currency ?? 'EUR')) : ($request->amount ?? Money::of(0, $currency ?? 'EUR')),
             status: match ($data['status'] ?? '') { 'COMPLETED' => Status::REFUNDED, 'CANCELLED', 'FAILED' => Status::REFUSED, default => Status::PENDING },
             transactionReference: $capture,
-            message: $data['status'] ?? null,
+            message: Data::castOrNull($data['status'] ?? null),
             raw: $data,
         ));
     }

@@ -55,8 +55,9 @@ final class Api
      */
     public function authorized(array $order): array
     {
-        $id = (string) ($order['id'] ?? '');
-        if ('' === $id || 'AUTHORIZE' !== ($order['intent'] ?? null) || 'APPROVED' !== ($order['status'] ?? null) || isset($order['purchase_units'][0]['payments']['authorizations'][0]['id'])) {
+        $read = Data::of($order);
+        $id = $read->text('id');
+        if ('' === $id || 'AUTHORIZE' !== ($order['intent'] ?? null) || 'APPROVED' !== ($order['status'] ?? null) || $read->has('purchase_units.0.payments.authorizations.0.id')) {
             return $order;
         }
         $this->call('POST', '/v2/checkout/orders/'.rawurlencode($id).'/authorize', [], ['PayPal-Request-Id' => $id.'-authorize']);
@@ -66,6 +67,7 @@ final class Api
 
     /**
      * @param array<string, mixed>|null $body
+     * @param array<string, string>      $headers
      *
      * @return array<string, mixed> the JSON answer (empty for 204)
      *
@@ -94,11 +96,12 @@ final class Api
             throw Redaction::withoutArguments(new ProviderException('paypal', sprintf('PayPal answered HTTP %d with a body that is not JSON.', $status)));
         }
         if ($status >= 400) {
-            $detail = $data['details'][0]['description'] ?? $data['message'] ?? $data['error_description'] ?? sprintf('HTTP %d', $status);
-            throw Redaction::withoutArguments(new ProviderException('paypal', (string) $detail, $data['name'] ?? $data['details'][0]['issue'] ?? $data['error'] ?? null));
+            $read = Data::of($data);
+            $detail = $read->get('details.0.description') ?? $read->get('message') ?? $read->get('error_description') ?? sprintf('HTTP %d', $status);
+            throw Redaction::withoutArguments(new ProviderException('paypal', Data::cast($detail), Data::castOrNull($read->get('name') ?? $read->get('details.0.issue') ?? $read->get('error'))));
         }
 
-        return $data;
+        return Data::map($data);
     }
 
     /**
@@ -155,10 +158,10 @@ final class Api
             throw Redaction::withoutArguments(new ProviderException('paypal', 'PayPal did not answer for a token: '.Redaction::text($e->getMessage(), $secrets), null, Redaction::copy($e, $secrets)));
         }
         if (empty($data['access_token'])) {
-            throw Redaction::withoutArguments(new ProviderException('paypal', (string) ($data['error_description'] ?? 'PayPal gave no token: check the client id and secret.'), $data['error'] ?? null));
+            throw Redaction::withoutArguments(new ProviderException('paypal', Data::cast($data['error_description'] ?? 'PayPal gave no token: check the client id and secret.'), Data::castOrNull($data['error'] ?? null)));
         }
-        $this->token = (string) $data['access_token'];
-        $this->tokenExpiresAt = time() + (int) ($data['expires_in'] ?? 3600);
+        $this->token = Data::cast($data['access_token']);
+        $this->tokenExpiresAt = time() + Data::integer($data['expires_in'] ?? 3600);
 
         return $this->token;
     }
@@ -170,6 +173,6 @@ final class Api
      */
     private function secrets(string ...$more): array
     {
-        return [$this->secret, (string) $this->token, ...$more];
+        return [$this->secret, (string) $this->token, ...array_values($more)];
     }
 }
