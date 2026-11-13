@@ -4,6 +4,43 @@ PayPal for [omnisense/omnitrade](https://github.com/glitchr-omnisense/omnitrade)
 PayPal's page and captured when the buyer comes back, authorizations, refunds, and the webhook's
 events - PayPal's v2 REST API, over the application's HTTP client.
 
+## Install and a first call
+
+```sh
+composer require omnitrade/paypal
+```
+
+No account for this first call: PayPal's answer is recorded (Symfony's `MockHttpClient` answers in
+place of the API), so nothing leaves the process. With your own credentials, give the factory your
+HTTP client (or none: it makes its own).
+
+```php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
+use Omnitrade\Model\Money;
+use Omnitrade\Model\Payment;
+use Omnitrade\PayPal\PayPalGatewayFactory;
+use Symfony\Component\HttpClient\MockHttpClient;
+use Symfony\Component\HttpClient\Response\MockResponse;
+
+// PayPal's two answers (a token, then the order), recorded: no account, and nothing leaves the process.
+$http = new MockHttpClient([
+    new MockResponse('{"access_token": "not-a-token", "token_type": "Bearer", "expires_in": 32400}'),
+    new MockResponse('{"id": "5O190127TN364715T", "status": "PAYER_ACTION_REQUIRED", "links": [{"rel": "payer-action", "href": "https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T"}]}'),
+]);
+$gateway = (new PayPalGatewayFactory($http))->create(['client_id' => 'id', 'secret' => 'secret', 'sandbox' => true]);
+
+$transaction = $gateway->purchase(new Payment(amount: Money::of(1250, 'EUR'), reference: 'ORDER-1042', returnUrl: 'https://shop.example/back'));
+echo $transaction->status->value, ' ', $transaction->redirectUrl, "\n";   // pending https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T
+```
+
+A real payment needs a PayPal business account: a REST app's client id and secret (below), the
+sandbox's first.
+
+## Configuration
+
 ```php
 $gateway = (new PayPalGatewayFactory($http))->create(['client_id' => '...', 'secret' => '...', 'sandbox' => true]);   // $http: the application's HTTP client; none given, the factory makes its own
 ```
