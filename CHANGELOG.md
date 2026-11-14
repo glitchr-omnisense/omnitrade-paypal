@@ -2,14 +2,26 @@
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-11-14
+## [1.2.0] - 2026-11-14
 
-Saved methods (omnisense/omnitrade 1.1) on PayPal's Vault v3, and their charge without a page.
-Additive: nothing that worked before changes, except that a declined capture now carries PayPal's
-reason as `providerCode` (it had none). Nothing was checked against PayPal (no sandbox): the
-answers follow PayPal's REST reference; docs/index.md lists what remains to verify.
+Saved methods (omnisense/omnitrade 1.1, their setup completed by 1.2's `CompleteMethodSetup`) on
+PayPal's Vault v3, and their charge without a page. No 1.1.0 was released: the work prepared under
+that number (2b0f05a) is this release, its PayPal-own `Request\CompleteMethodSetup` and its
+`setup_method` option replaced by the core's request before any tag. Additive: nothing that worked
+in 1.0 changes, except that a declined capture now carries PayPal's reason as `providerCode` (it
+had none). Nothing was checked against PayPal (no sandbox): the answers follow PayPal's REST
+reference; docs/index.md lists what remains to verify.
 
 ### Added
+- `SetupMethod`: a setup token for a PayPal account (`POST /v3/vault/setup-tokens`, usage type
+  `MERCHANT`), its approval page and the customer PayPal made (or the one named) as a
+  `MethodSetup`. Supported by default.
+- `CompleteMethodSetup` (omnisense/omnitrade 1.2): once the buyer approved the setup, the setup
+  token read (`GET /v3/vault/setup-tokens/{id}`: APPROVED, or VAULTED already, and the named
+  customer's) and turned into a payment token (`POST /v3/vault/payment-tokens`, `PayPal-Request-Id:
+  <setup>-payment-token`, so once per setup), answered as the `SavedMethod`. Another customer's
+  setup, or an id that is not a token's: `not_this_customer`; a setup not approved (CREATED,
+  PAYER_ACTION_REQUIRED...): `setup_not_completed`, PayPal's status in the message.
 - `FetchSavedMethods`: a PayPal customer's payment tokens (`GET /v3/vault/payment-tokens`, every
   page of 20), as `SavedMethod`s: "PayPal alice@example.org", "Visa •••• 1111" with its expiry,
   "Venmo @user".
@@ -24,23 +36,14 @@ answers follow PayPal's REST reference; docs/index.md lists what remains to veri
   (`PAYER_ACTION_REQUIRED`) is PENDING with the payer-action page as `redirectUrl` (REFUSED without
   a `returnUrl`); `fetch()` and the `CHECKOUT.ORDER.APPROVED` webhook then capture the approved
   order (`Api::completed()`, `PayPal-Request-Id: <order>-capture`).
-- `SetupMethod`: a setup token for a PayPal account (`POST /v3/vault/setup-tokens`, usage type
-  `MERCHANT`), its approval page and the customer PayPal made (or the one named) as a
-  `MethodSetup`. Supported only with the `setup_method: true` option (below).
-- `Omnitrade\PayPal\Request\CompleteMethodSetup`: PayPal's own step once the buyer approved the
-  setup - the setup token turned into a payment token (`POST /v3/vault/payment-tokens`, once per
-  setup), answered as the `SavedMethod`.
 - `notify()`: `VAULT.PAYMENT-TOKEN.CREATED`, `.DELETED` and `.DELETION-INITIATED` name the token
   (`reference`, no status).
 - `Api::attempt()` (a 422 answered as PayPal's body), `Api::completed()`, `Vault` (tokens read as
   `SavedMethod`s).
-- Tests: `PayPalSavedMethodsTest` (12).
+- Tests: `PayPalSavedMethodsTest` (12), the contract suite's setup and its completion on recorded
+  answers (`PayPalContractTest`).
 
 ### Not supported, and why
-- `SetupMethod` by default: omnisense/omnitrade 1.1 promises the method is listed once the buyer
-  is back on `returnUrl`; at PayPal the approved setup token must still be turned into a payment
-  token, a step the core has no request for. A host that asks `CompleteMethodSetup` on its
-  `returnUrl` sets `setup_method: true`; any other sees `supports(SetupMethod::class)` false.
 - Saving a card on a hosted page: PayPal vaults a card through its card fields (JavaScript on the
   site's page), not a page of its own. `SetupMethod` with a `method` other than `paypal` is a
   `ProviderException` (`method_not_supported`), nothing sent.
@@ -48,7 +51,7 @@ answers follow PayPal's REST reference; docs/index.md lists what remains to veri
   PayPal's vault keeps none of them; the customer is PayPal's own.
 
 ### Changed
-- Requires `omnisense/omnitrade` `^1.1`.
+- Requires `omnisense/omnitrade` `^1.2` (`Request\CompleteMethodSetup`).
 
 ## [1.0.0] - 2026-11-13
 

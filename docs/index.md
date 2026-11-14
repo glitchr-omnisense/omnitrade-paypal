@@ -14,11 +14,11 @@ client-credentials token, over the application's HTTP client. The gateway calls:
 | void | Orders v2, Payments v2 | `GET /v2/checkout/orders/{id}`, `POST /v2/payments/authorizations/{id}/void`, the order again |
 | refund | Orders v2, Payments v2 | `GET /v2/checkout/orders/{id}` (to find its capture), `POST /v2/payments/captures/{id}/refund` |
 | notify | Webhooks v1 | `POST /v1/notifications/verify-webhook-signature` |
-| setupMethod (1.1) | Vault v3 | `POST /v3/vault/setup-tokens` |
-| CompleteMethodSetup (1.1) | Vault v3 | `GET /v3/vault/setup-tokens/{id}`, `POST /v3/vault/payment-tokens` |
-| fetchSavedMethods (1.1) | Vault v3 | `GET /v3/vault/payment-tokens?customer_id=...` (every page) |
-| removeSavedMethod (1.1) | Vault v3 | `GET` then `DELETE /v3/vault/payment-tokens/{id}` |
-| purchase with a saved method (1.1) | Vault v3, Orders v2 | `GET /v3/vault/payment-tokens/{id}`, `POST /v2/checkout/orders` (`vault_id`); after the payer's page, `POST /v2/checkout/orders/{id}/capture` |
+| setupMethod (1.2) | Vault v3 | `POST /v3/vault/setup-tokens` |
+| completeMethodSetup (1.2) | Vault v3 | `GET /v3/vault/setup-tokens/{id}`, `POST /v3/vault/payment-tokens` |
+| fetchSavedMethods (1.2) | Vault v3 | `GET /v3/vault/payment-tokens?customer_id=...` (every page) |
+| removeSavedMethod (1.2) | Vault v3 | `GET` then `DELETE /v3/vault/payment-tokens/{id}` |
+| purchase with a saved method (1.2) | Vault v3, Orders v2 | `GET /v3/vault/payment-tokens/{id}`, `POST /v2/checkout/orders` (`vault_id`); after the payer's page, `POST /v2/checkout/orders/{id}/capture` |
 
 on `https://api-m.paypal.com` (live, `Omnitrade\PayPal\Api::LIVE`) or
 `https://api-m.sandbox.paypal.com` (`sandbox: true`, `Api::SANDBOX`): the same API at two
@@ -30,7 +30,7 @@ addresses.
 composer require omnitrade/paypal
 ```
 
-Requires PHP 8.2, `omnisense/omnitrade` (1.1 or later 1.x) and `symfony/http-client` (6.4, 7 or 8). In a
+Requires PHP 8.2, `omnisense/omnitrade` (1.2 or later 1.x) and `symfony/http-client` (6.4, 7 or 8). In a
 Symfony application with `Omnitrade\Bridge\Symfony\OmnitradeBundle`, the factory is registered as
 soon as the package is installed.
 
@@ -47,7 +47,7 @@ $gateway = (new PayPalGatewayFactory($http))->create(['client_id' => '...', 'sec
   (`CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`,
   `PAYMENT.CAPTURE.REFUNDED`; with saved methods also `VAULT.PAYMENT-TOKEN.CREATED`,
   `VAULT.PAYMENT-TOKEN.DELETED`).
-- **Saved methods (1.1)**: the app's **Vault** feature ("Save payment methods") turned on in the
+- **Saved methods (1.2)**: the app's **Vault** feature ("Save payment methods") turned on in the
   Developer Dashboard. In live mode, vaulting PayPal accounts for merchant-initiated payments needs
   PayPal to approve the business account for it (PayPal's support); the sandbox does not ask.
 
@@ -60,7 +60,6 @@ $gateway = (new PayPalGatewayFactory($http))->create(['client_id' => '...', 'sec
 | `sandbox` | bool | `false` | no | `true`: the sandbox API, with sandbox credentials |
 | `webhook_id` | ?string | `null` | for `notify()` | the webhook's id, sent to PayPal's verification; without it every webhook is an `InvalidNotificationException` |
 | `timeout` | int | `15` | no | seconds, for every call |
-| `setup_method` | bool | `false` | no | `true`: `SetupMethod` supported - set it only when the host asks `CompleteMethodSetup` on its `returnUrl` (see Saved methods) |
 
 ```yaml
 omnitrade:
@@ -86,9 +85,9 @@ omnitrade:
 | `FetchTransaction` | yes (the order) |
 | `GetPaymentMethods` | yes (a fixed list, Pay Later by country and currency) |
 | `Notify` | yes (verified by PayPal) |
-| `FetchSavedMethods`, `RemoveSavedMethod` (1.1) | yes (a PayPal customer's payment tokens) |
-| `Purchase` with `Payment::$savedMethod` (1.1) | yes (an order paid with the token's `vault_id`; PayPal's payer-action page when it asks) |
-| `SetupMethod` (1.1) | only with `setup_method: true`: the approved setup needs `Omnitrade\PayPal\Request\CompleteMethodSetup`, a step the core does not have; a PayPal account only, no card |
+| `FetchSavedMethods`, `RemoveSavedMethod` (1.2) | yes (a PayPal customer's payment tokens) |
+| `Purchase` with `Payment::$savedMethod` (1.2) | yes (an order paid with the token's `vault_id`; PayPal's payer-action page when it asks) |
+| `SetupMethod`, `CompleteMethodSetup` (1.2) | yes (a setup token approved on PayPal's page, then turned into a payment token); a PayPal account only, no card |
 | `FetchOrder`, the catalogue, `AffiliateLink`, connected accounts, subscriptions | no |
 
 ## Behaviour
@@ -182,21 +181,21 @@ no certificate and makes one more call per webhook.
 | `PAYMENT.CAPTURE.REFUNDED`, `PAYMENT.CAPTURE.REVERSED` | REFUNDED |
 | `PAYMENT.AUTHORIZATION.CREATED` | AUTHORIZED |
 | `PAYMENT.AUTHORIZATION.VOIDED`, `CHECKOUT.ORDER.VOIDED` | CANCELLED |
-| `CHECKOUT.ORDER.APPROVED` of a saved method's charge (1.1) | the order captured, then PAID (or what the capture became) |
-| `VAULT.PAYMENT-TOKEN.CREATED`, `.DELETED`, `.DELETION-INITIATED` (1.1) | none; `reference` the token's id |
+| `CHECKOUT.ORDER.APPROVED` of a saved method's charge (1.2) | the order captured, then PAID (or what the capture became) |
+| `VAULT.PAYMENT-TOKEN.CREATED`, `.DELETED`, `.DELETION-INITIATED` (1.2) | none; `reference` the token's id |
 | any other | none |
 
 `reference` is the order's id: the resource's for a `CHECKOUT.ORDER.*` event (with the order as
 `transaction`), the capture's `supplementary_data.related_ids.order_id` otherwise. `id` is the
 event's.
 
-## Saved methods (1.1)
+## Saved methods (1.2)
 
 PayPal keeps a buyer's PayPal account (or a card vaulted elsewhere through its card fields) as a
 **payment token** of a PayPal **customer**; the site keeps the customer's id and the token's,
 never more.
 
-**Saving: two steps at PayPal, one more than the core asks.** `SetupMethod($customer, $returnUrl,
+**Saving: two steps at PayPal, both the core's requests.** `SetupMethod($customer, $returnUrl,
 ...)` makes a setup token (`POST /v3/vault/setup-tokens`): `customer.id` the request's
 `$customer->reference` when the buyer already is one (else PayPal makes a customer and gives its
 id), `payment_source.paypal` with `usage_type: MERCHANT`, `usage_pattern: IMMEDIATE`,
@@ -206,24 +205,25 @@ setup-<key>` with an idempotency key. The answer is a `MethodSetup`: `reference`
 `redirectUrl` its `approve` link, `customer` the PayPal customer to keep. Once the buyer approved
 on that page, PayPal sends them back to `returnUrl` - and the setup token is not yet a saved
 method: `FetchSavedMethods` does not list it until it is turned into a payment token. The host
-asks for that on its `returnUrl`:
+asks for that on its `returnUrl` with omnisense/omnitrade 1.2's `CompleteMethodSetup`, as it does
+for any provider that supports it:
 
 ```php
-use Omnitrade\PayPal\Request\CompleteMethodSetup;
+use Omnitrade\Request\CompleteMethodSetup;
 
 // $setup->reference kept from SetupMethod, or PayPal's approval_token_id on the returnUrl
 $method = $paypal->execute(new CompleteMethodSetup($setup->reference, $setup->customer))->getMethod();   // "PayPal alice@example.org"
 ```
 
 `CompleteMethodSetup` reads the setup (`GET /v3/vault/setup-tokens/{id}`): another customer's is
-`not_this_customer`, one not `APPROVED` (nor `VAULTED`, already turned) a `ProviderException`
-with its status as `providerCode` (`PAYER_ACTION_REQUIRED`: the buyer did not approve). Then
-`POST /v3/vault/payment-tokens` with `payment_source.token: {id, type: SETUP_TOKEN}` and
-`PayPal-Request-Id: <setup>-payment-token`, so that asking twice makes one token. Because
-omnisense/omnitrade 1.1's `SetupMethod` promises the method is listed once the buyer is back and
-has no such step, `SetupMethod` is supported only with the `setup_method: true` option: a host
-that does not make the step (a generic one, as the Forge 1.x) sees `supports(SetupMethod::class)`
-false rather than setups that never end. Only a PayPal account is saved this way: `method` other
+`not_this_customer` (`CompleteMethodSetup::NOT_THIS_CUSTOMER`, an id that is not a token's too,
+nothing asked), one not `APPROVED` (nor `VAULTED`, already turned) `setup_not_completed`
+(`CompleteMethodSetup::NOT_COMPLETED`, PayPal's status in the message: `PAYER_ACTION_REQUIRED`,
+the buyer did not approve). Then `POST /v3/vault/payment-tokens` with `payment_source.token: {id,
+type: SETUP_TOKEN}` and `PayPal-Request-Id: <setup>-payment-token`, so that asking twice makes one
+token. A buyer who approves then closes the page before the redirect leaves an approved setup
+token unturned: a host that keeps its pending setups can complete them later (idempotent). Only a
+PayPal account is saved this way: `method` other
 than `paypal` is `method_not_supported`, nothing sent (PayPal vaults a card through its card
 fields, on the site's page). PayPal's vault keeps no metadata: the request's metadata, the tags
 and the customer's e-mail and name are not sent.
@@ -354,8 +354,8 @@ failure](https://github.com/glitchr-omnisense/omnitrade/blob/1.x/docs/errors.md#
 
 ## Verified, and not
 
-Tested offline, 29 tests: `Tests/PayPalSavedMethodsTest.php` (1.1: the setup offered only with
-`setup_method`, a PayPal account saved on PayPal's page then completed once, a setup not approved
+Tested offline, 29 tests: `Tests/PayPalSavedMethodsTest.php` (1.2: the setup and its completion
+supported by default, the core's request and no PayPal-own one, a PayPal account saved on PayPal's page then completed once, a setup not approved
 or another customer's refused, a known customer's setup, no card setup; the customer's tokens
 listed over two pages; only their own token deleted; a token charged at once, a card as a
 merchant-initiated payment, a 422 refusal, a declined capture, an invalid request; another
@@ -364,14 +364,15 @@ page to come back to; the vault and approval webhooks), `Tests/PayPalGatewayTest
 captured, a refund on the order's capture, a webhook verified by PayPal then read, an approved
 AUTHORIZE order authorized once, fetched AUTHORIZED, then voided) and
 `Tests/PayPalContractTest.php`, the family's conformance suite on an order authorized, then
-captured or voided, with webhooks verified on PayPal's side. The suite found a voided
+captured or voided, with webhooks verified on PayPal's side, and (1.2) a setup made then
+completed into its payment token. The suite found a voided
 authorization (the order still `COMPLETED`, its authorization `VOIDED`) read as AUTHORIZED; it now
 reads CANCELLED. The recorded answers follow PayPal's Orders v2 documentation, with its example
 ids.
 
 Not verified: no call was made to PayPal, sandbox or live; that needs a sandbox app's credentials
 (the authorization asked by `fetch()` and `void()` follows Orders v2's documentation). The saved
-methods (1.1) follow PayPal's Vault v3 and Orders v2 references as known when written, not a
+methods (1.2) follow PayPal's Vault v3 and Orders v2 references as known when written, not a
 recorded answer; to verify in a sandbox:
 
 - `POST /v3/vault/setup-tokens` without `customer` answers a `customer.id` PayPal made; the
@@ -381,7 +382,9 @@ recorded answer; to verify in a sandbox:
 - the setup token's status once turned (`VAULTED` assumed) and `POST /v3/vault/payment-tokens`
   with the same `PayPal-Request-Id` answering the same token;
 - whether PayPal sends an event when a setup token is approved (none is used: if one exists,
-  `notify()` could make the completion and `SetupMethod` be supported by default);
+  `notify()` could also complete a setup whose buyer never came back to the `returnUrl`);
+- a setup token's status while the buyer has not approved (`PAYER_ACTION_REQUIRED` assumed) and
+  after a cancel or its expiry (any status but `APPROVED` / `VAULTED` is `setup_not_completed`);
 - the list's query (`customer_id`, `page_size` 20 as the maximum, `page`, `total_required`) and
   answer (`payment_tokens`, `total_pages`, each token's `customer` or the list's), a card token's
   `brand`, `last_digits`, `expiry`;

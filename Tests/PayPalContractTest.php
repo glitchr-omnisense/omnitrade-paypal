@@ -3,6 +3,7 @@
 namespace Omnitrade\PayPal\Tests;
 
 use Omnitrade\GatewayFactoryInterface;
+use Omnitrade\Model\Customer;
 use Omnitrade\PayPal\Data;
 use Omnitrade\PayPal\PayPalGatewayFactory;
 use Omnitrade\Testing\GatewayContractTests;
@@ -10,12 +11,14 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\Response\MockResponse;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-/** Omnitrade's conformance suite, on PayPal's recorded answers: an order authorized, then captured or voided. */
+/** Omnitrade's conformance suite, on PayPal's recorded answers: an order authorized, then captured or voided; a PayPal account saved, its approved setup token turned into a payment token. */
 final class PayPalContractTest extends TestCase
 {
     use GatewayContractTests;
 
     private const ORDER = '5O190127TN364715T';
+    private const CUSTOMER = 'customer_4029352050';
+    private const SETUP = '5C991763VB2781612';
 
     protected function factory(HttpClientInterface $http): GatewayFactoryInterface
     {
@@ -30,6 +33,16 @@ final class PayPalContractTest extends TestCase
     protected function transactionReference(): string
     {
         return self::ORDER;
+    }
+
+    protected function setupCustomer(): Customer
+    {
+        return new Customer(email: 'camille@example.org', name: 'Camille Durand', reference: self::CUSTOMER);
+    }
+
+    protected function setupReference(): string
+    {
+        return self::SETUP;
     }
 
     /** The capture: an order only authorized has nothing to refund. */
@@ -60,6 +73,10 @@ final class PayPalContractTest extends TestCase
 
                 return new MockResponse('', ['http_code' => 204]);
             },
+            // Vault v3: the setup token made, approved by the buyer, then turned into a payment token.
+            'POST /v3/vault/setup-tokens' => self::setupToken('PAYER_ACTION_REQUIRED'),
+            'GET /v3/vault/setup-tokens/'.self::SETUP => self::setupToken('APPROVED'),
+            'POST /v3/vault/payment-tokens' => ['id' => '8kk8451t', 'customer' => ['id' => self::CUSTOMER], 'payment_source' => ['paypal' => ['usage_type' => 'MERCHANT', 'customer_type' => 'CONSUMER', 'email_address' => 'camille@example.org', 'payer_id' => 'QYR5Z8XDVJNXQ']]],
             'POST /v2/payments/captures/CAP-3C679366HH908993F/refund' => ['id' => '1JU08902781691411', 'status' => 'COMPLETED', 'amount' => ['currency_code' => 'EUR', 'value' => '5.00']],
             'POST /v1/notifications/verify-webhook-signature' => static fn (string $method, string $url, array $options) => new MockResponse(json_encode(['verification_status' => 'SUCCESS' === Data::of(json_decode(Data::cast($options['body'] ?? null), true))->get('transmission_sig') ? 'SUCCESS' : 'FAILURE'], \JSON_THROW_ON_ERROR)),
         ];
@@ -75,6 +92,13 @@ final class PayPalContractTest extends TestCase
     protected function tamperedNotification(): array
     {
         return [self::event(), self::headers('forged')];
+    }
+
+    /** @return array<string, mixed> */
+    private static function setupToken(string $status): array
+    {
+        return ['id' => self::SETUP, 'customer' => ['id' => self::CUSTOMER], 'status' => $status, 'payment_source' => ['paypal' => ['usage_type' => 'MERCHANT', 'customer_type' => 'CONSUMER']],
+            'links' => [['href' => 'https://www.sandbox.paypal.com/agreements/approve?approval_session_id=05C1734587219561N', 'rel' => 'approve', 'method' => 'GET']]];
     }
 
     private static function event(): string

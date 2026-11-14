@@ -17,7 +17,7 @@
     "require": {
         "php": ">=8.2",
         "omnisense/contracts": "^1.0",
-        "omnisense/omnitrade": "^1.1",
+        "omnisense/omnitrade": "^1.2",
         "symfony/http-client": "^6.4|^7.0|^8.0"
     },
     "require-dev": {

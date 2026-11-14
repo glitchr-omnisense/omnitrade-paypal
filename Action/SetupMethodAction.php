@@ -10,6 +10,7 @@ use Omnitrade\Model\MethodSetup;
 use Omnitrade\PayPal\Api;
 use Omnitrade\PayPal\Data;
 use Omnitrade\PayPal\Vault;
+use Omnitrade\Request\CompleteMethodSetup;
 use Omnitrade\Request\Request;
 use Omnitrade\Request\SetupMethod;
 
@@ -19,10 +20,9 @@ use Omnitrade\Request\SetupMethod;
  * request's ($customer->reference, a PayPal customer id), else the one PayPal makes for the
  * occasion - kept as MethodSetup::$customer.
  *
- * Supported only when the gateway's setup_method option is true: once the buyer approved, the
- * setup token must still be turned into a payment token (Request\CompleteMethodSetup, PayPal's
- * own step), which omnisense/omnitrade 1.1's SetupMethod does not ask for. A host that makes
- * that step on its returnUrl turns the option on; any other sees supports() false.
+ * Once the buyer approved, the setup token must still be turned into a payment token: the host
+ * asks omnisense/omnitrade 1.2's CompleteMethodSetup on its returnUrl (CompleteMethodSetupAction),
+ * as it does for every provider that supports it.
  *
  * Only a PayPal account: a card is vaulted through PayPal's card fields (the buyer types it in
  * PayPal's JavaScript, on the site's page), which no hosted page offers. The idempotency key is
@@ -34,14 +34,14 @@ final class SetupMethodAction implements ActionInterface, ApiAwareInterface
     /** @use ApiAwareTrait<Api> */
     use ApiAwareTrait;
 
-    public function __construct(private readonly bool $enabled = false)
+    public function __construct()
     {
         $this->apiClass = Api::class;
     }
 
     public function supports(Request $request): bool
     {
-        return $this->enabled && $request instanceof SetupMethod;
+        return $request instanceof SetupMethod;
     }
 
     public function execute(Request $request): void
@@ -52,7 +52,7 @@ final class SetupMethodAction implements ActionInterface, ApiAwareInterface
         }
         $customer = $request->customer->reference;
         if (null !== $customer && '' !== $customer && !Vault::isId($customer)) {
-            throw new ProviderException('paypal', 'Not a PayPal customer\'s id.', 'not_this_customer');
+            throw new ProviderException('paypal', 'Not a PayPal customer\'s id.', CompleteMethodSetup::NOT_THIS_CUSTOMER);
         }
         $body = array_filter([
             'customer' => null !== $customer && '' !== $customer ? ['id' => $customer] : null,

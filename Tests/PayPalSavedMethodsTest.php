@@ -11,7 +11,7 @@ use Omnitrade\Model\PaymentMethod;
 use Omnitrade\Model\Status;
 use Omnitrade\PayPal\Data;
 use Omnitrade\PayPal\PayPalGatewayFactory;
-use Omnitrade\PayPal\Request\CompleteMethodSetup;
+use Omnitrade\Request\CompleteMethodSetup;
 use Omnitrade\Request\FetchSavedMethods;
 use Omnitrade\Request\RemoveSavedMethod;
 use Omnitrade\Request\SetupMethod;
@@ -20,7 +20,7 @@ use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
 /**
- * Saved methods (omnisense/omnitrade 1.1) on PayPal's Vault v3, on answers shaped as PayPal's
+ * Saved methods (omnisense/omnitrade 1.1, the setup completed by 1.2's CompleteMethodSetup) on PayPal's Vault v3, on answers shaped as PayPal's
  * REST reference gives them (setup tokens, payment tokens, an order paid with a vault_id): no
  * call to PayPal. The ids are the reference's examples.
  */
@@ -73,22 +73,21 @@ final class PayPalSavedMethodsTest extends TestCase
         return (new PayPalGatewayFactory($http))->create(['client_id' => 'cid', 'secret' => 'sec', 'sandbox' => true, 'webhook_id' => 'WH-1'] + $options);
     }
 
-    public function testTheOperationsSaySetupNeedsTheHostsStep(): void
+    public function testTheSetupAndItsCompletionAreSupportedByDefault(): void
     {
-        $plain = $this->gateway();
-        self::assertFalse($plain->supports(SetupMethod::class), 'the approved setup needs CompleteMethodSetup: not offered unless the host makes it');
-        self::assertTrue($plain->supports(FetchSavedMethods::class));
-        self::assertTrue($plain->supports(RemoveSavedMethod::class));
-        self::assertTrue($plain->supports(CompleteMethodSetup::class));
-        self::assertNotContains('setupMethod', $plain->capabilities()->operations);
-        self::assertContains('fetchSavedMethods', $plain->capabilities()->operations);
-
-        self::assertContains('setupMethod', $this->gateway(['setup_method' => true])->capabilities()->operations);
+        $gateway = $this->gateway();
+        foreach ([SetupMethod::class, CompleteMethodSetup::class, FetchSavedMethods::class, RemoveSavedMethod::class] as $request) {
+            self::assertTrue($gateway->supports($request), $request);
+        }
+        foreach (['setupMethod', 'completeMethodSetup', 'fetchSavedMethods', 'removeSavedMethod'] as $operation) {
+            self::assertContains($operation, $gateway->capabilities()->operations);
+        }
+        self::assertFalse(class_exists('Omnitrade\\PayPal\\Request\\CompleteMethodSetup'), 'the core\'s request, no PayPal-own one');
     }
 
     public function testAPayPalAccountIsSavedOnPayPalsPageThenCompleted(): void
     {
-        $gateway = $this->gateway(['setup_method' => true]);
+        $gateway = $this->gateway();
 
         $setup = $gateway->execute(new SetupMethod(new Customer('alice@example.org', 'Alice Exemple'), 'https://shop.example/saved', idempotencyKey: 'setup-42', locale: 'fr_FR'))->getSetup();
         self::assertNotNull($setup);
@@ -108,7 +107,8 @@ final class PayPalSavedMethodsTest extends TestCase
             $gateway->execute(new CompleteMethodSetup(self::SETUP, self::CUSTOMER));
             self::fail('a setup not approved is not completed');
         } catch (ProviderException $e) {
-            self::assertSame('PAYER_ACTION_REQUIRED', $e->providerCode);
+            self::assertSame(CompleteMethodSetup::NOT_COMPLETED, $e->providerCode);
+            self::assertStringContainsString('PAYER_ACTION_REQUIRED', $e->getMessage(), 'PayPal\'s status in the message');
         }
         self::assertNull($this->called('POST', '/v3/vault/payment-tokens'));
 
@@ -131,7 +131,7 @@ final class PayPalSavedMethodsTest extends TestCase
 
     public function testASetupForAKnownCustomerAndOnlyForAPayPalAccount(): void
     {
-        $gateway = $this->gateway(['setup_method' => true]);
+        $gateway = $this->gateway();
         $setup = $gateway->execute(new SetupMethod(new Customer(reference: self::CUSTOMER), 'https://shop.example/saved', 'https://shop.example/account'))->getSetup();
 
         self::assertSame(self::CUSTOMER, $setup?->customer);

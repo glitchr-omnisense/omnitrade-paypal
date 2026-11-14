@@ -56,7 +56,7 @@ final class Orders
             amount: \is_array($amount) && isset($amount['value']) ? Money::fromDecimal(Data::cast($amount['value']), $currency) : null,
             redirectUrl: Status::PENDING === $status ? $approve : null,
             message: $read->textOrNull('status'),
-            // Why a capture was declined or is pending, as PayPal says it (1.1).
+            // Why a capture was declined or is pending, as PayPal says it (1.2).
             providerCode: $captured->textOrNull('status_details.reason'),
             method: isset($order['payment_source']) ? (string) array_key_first((array) $order['payment_source']) : null,
             metadata: array_filter([
