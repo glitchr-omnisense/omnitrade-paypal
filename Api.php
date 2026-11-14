@@ -11,8 +11,8 @@ use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpExceptionIn
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * PayPal's REST API (v2 Orders, v2 Payments, v1 webhook verification), on an
- * OAuth2 client-credentials token fetched once and kept until it expires.
+ * PayPal's REST API (v2 Orders, v2 Payments, v3 Vault, v1 webhook verification),
+ * on an OAuth2 client-credentials token fetched once and kept until it expires.
  * The sandbox and the live site are the same API at two addresses.
  */
 final class Api
@@ -75,6 +75,63 @@ final class Api
      */
     public function call(string $method, string $path, ?array $body = null, array $headers = []): array
     {
+        return $this->send($method, $path, $body, $headers, false);
+    }
+
+    /**
+     * call(), where PayPal's refusal of a payment is an answer rather than a failure: an HTTP 422
+     * with its details (UNPROCESSABLE_ENTITY: INSTRUMENT_DECLINED, PAYER_CANNOT_PAY...) comes
+     * back as its body - ['name', 'details' => [['issue', 'description']], 'debug_id'] - for the
+     * caller to read. Anything else fails as call() does.
+     *
+     * @param array<string, mixed>|null $body
+     * @param array<string, string>      $headers
+     *
+     * @return array<string, mixed>
+     *
+     * @throws ProviderException
+     */
+    public function attempt(string $method, string $path, ?array $body = null, array $headers = []): array
+    {
+        return $this->send($method, $path, $body, $headers, true);
+    }
+
+    /**
+     * An order as it stands once captured, when it is a saved method's charge (Vault::charged())
+     * that PayPal sent its payer to confirm: approved, intent CAPTURE, nothing captured yet. It is
+     * captured (POST /v2/checkout/orders/{id}/capture, once: its PayPal-Request-Id is
+     * "<order>-capture"), then read again. Any other order is given back as it is - an order
+     * paid through PayPal's page is still captured by capture(), as in 1.0.
+     *
+     * @param array<string, mixed> $order
+     * @param bool                 $vaulted the caller made it with a saved method (its answer may not say so)
+     *
+     * @return array<string, mixed>
+     *
+     * @throws ProviderException
+     */
+    public function completed(array $order, bool $vaulted = false): array
+    {
+        $read = Data::of($order);
+        $id = $read->text('id');
+        if ('' === $id || 'CAPTURE' !== ($order['intent'] ?? 'CAPTURE') || 'APPROVED' !== ($order['status'] ?? null)
+            || $read->has('purchase_units.0.payments.captures.0.id') || (!$vaulted && !Vault::charged($order))) {
+            return $order;
+        }
+        $this->call('POST', '/v2/checkout/orders/'.rawurlencode($id).'/capture', [], ['PayPal-Request-Id' => $id.'-capture']);
+
+        return $this->call('GET', '/v2/checkout/orders/'.rawurlencode($id));
+    }
+
+    /**
+     * @param array<string, mixed>|null $body
+     * @param array<string, string>      $headers
+     * @param bool                       $refusals a 422 with its details is answered, not thrown (attempt())
+     *
+     * @return array<string, mixed>
+     */
+    private function send(string $method, string $path, ?array $body, array $headers, bool $refusals): array
+    {
         Throttle::before($this->backoff);
         try {
             $response = $this->http->request($method, $this->base().$path, [
@@ -94,6 +151,9 @@ final class Api
         Throttle::after($this->backoff, 'paypal', $status, $received, \is_array($data) && isset($data['message']) && \is_string($data['message']) ? 'PayPal answered 429: '.$data['message'] : '');
         if (!\is_array($data)) {
             throw Redaction::withoutArguments(new ProviderException('paypal', sprintf('PayPal answered HTTP %d with a body that is not JSON.', $status)));
+        }
+        if ($refusals && 422 === $status && \is_array($data['details'] ?? null)) {
+            return Data::map($data);
         }
         if ($status >= 400) {
             $read = Data::of($data);

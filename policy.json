@@ -33,6 +33,6 @@
         "verifiedAt": "2026-11-10",
         "declaredBy": "maintainer",
         "contact": "https://www.paypal.com/merchantsupport",
-        "notes": "PayPal does not publish its rate limits: it may limit traffic that looks abusive and answers 429 RATE_LIMIT_REACHED (limits unknown, hence null). A PayPal help article advises fewer than 50 requests a minute to avoid an IP block: advice, not a published quota, so not declared. The OAuth token is kept for its lifetime (PayPal advises it). Creates carry PayPal-Request-Id when the caller gives an idempotency key."
+        "notes": "PayPal does not publish its rate limits: it may limit traffic that looks abusive and answers 429 RATE_LIMIT_REACHED (limits unknown, hence null). A PayPal help article advises fewer than 50 requests a minute to avoid an IP block: advice, not a published quota, so not declared. The OAuth token is kept for its lifetime (PayPal advises it). Creates carry PayPal-Request-Id when the caller gives an idempotency key; since 1.1 the Vault v3 calls too (setup token: setup-<key>; payment token: <setup>-payment-token; a vaulted order's capture: <order>-capture). Vaulting PayPal accounts for merchant-initiated payments needs the app's Vault feature, and in live mode PayPal's approval of the account for it (not a rate limit: not declared)."
     }
 }

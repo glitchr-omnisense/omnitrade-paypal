@@ -2,6 +2,54 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-14
+
+Saved methods (omnisense/omnitrade 1.1) on PayPal's Vault v3, and their charge without a page.
+Additive: nothing that worked before changes, except that a declined capture now carries PayPal's
+reason as `providerCode` (it had none). Nothing was checked against PayPal (no sandbox): the
+answers follow PayPal's REST reference; docs/index.md lists what remains to verify.
+
+### Added
+- `FetchSavedMethods`: a PayPal customer's payment tokens (`GET /v3/vault/payment-tokens`, every
+  page of 20), as `SavedMethod`s: "PayPal alice@example.org", "Visa •••• 1111" with its expiry,
+  "Venmo @user".
+- `RemoveSavedMethod`: the token read, then deleted only when it is that customer's; another's, or
+  one PayPal does not know, is a `ProviderException` with code `not_this_customer`, nothing deleted.
+- `Purchase` of a `Payment` with `savedMethod`: the token read (it must be the payment's
+  `customer->reference`'s, which is required), then an order with intent `CAPTURE` and
+  `payment_source.<source>.vault_id` (a card's `stored_credential`: merchant-initiated,
+  unscheduled, subsequent), under the payment's `PayPal-Request-Id`. COMPLETED is PAID, a capture
+  DECLINED REFUSED, a 422 refusal (`Vault::REFUSALS`: `INSTRUMENT_DECLINED`, `PAYER_CANNOT_PAY`...)
+  a REFUSED transaction with the issue as `providerCode`. PayPal asking its payer
+  (`PAYER_ACTION_REQUIRED`) is PENDING with the payer-action page as `redirectUrl` (REFUSED without
+  a `returnUrl`); `fetch()` and the `CHECKOUT.ORDER.APPROVED` webhook then capture the approved
+  order (`Api::completed()`, `PayPal-Request-Id: <order>-capture`).
+- `SetupMethod`: a setup token for a PayPal account (`POST /v3/vault/setup-tokens`, usage type
+  `MERCHANT`), its approval page and the customer PayPal made (or the one named) as a
+  `MethodSetup`. Supported only with the `setup_method: true` option (below).
+- `Omnitrade\PayPal\Request\CompleteMethodSetup`: PayPal's own step once the buyer approved the
+  setup - the setup token turned into a payment token (`POST /v3/vault/payment-tokens`, once per
+  setup), answered as the `SavedMethod`.
+- `notify()`: `VAULT.PAYMENT-TOKEN.CREATED`, `.DELETED` and `.DELETION-INITIATED` name the token
+  (`reference`, no status).
+- `Api::attempt()` (a 422 answered as PayPal's body), `Api::completed()`, `Vault` (tokens read as
+  `SavedMethod`s).
+- Tests: `PayPalSavedMethodsTest` (12).
+
+### Not supported, and why
+- `SetupMethod` by default: omnisense/omnitrade 1.1 promises the method is listed once the buyer
+  is back on `returnUrl`; at PayPal the approved setup token must still be turned into a payment
+  token, a step the core has no request for. A host that asks `CompleteMethodSetup` on its
+  `returnUrl` sets `setup_method: true`; any other sees `supports(SetupMethod::class)` false.
+- Saving a card on a hosted page: PayPal vaults a card through its card fields (JavaScript on the
+  site's page), not a page of its own. `SetupMethod` with a `method` other than `paypal` is a
+  `ProviderException` (`method_not_supported`), nothing sent.
+- The request's metadata, the gateway's tags and the customer's e-mail and name on a setup:
+  PayPal's vault keeps none of them; the customer is PayPal's own.
+
+### Changed
+- Requires `omnisense/omnitrade` `^1.1`.
+
 ## [1.0.0] - 2026-11-13
 
 The first stable release: it installs with Composer's default minimum-stability (stable).

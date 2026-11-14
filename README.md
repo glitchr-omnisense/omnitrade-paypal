@@ -70,10 +70,45 @@ the order's capture; `fetch()` reads the order; `notify()` reads `CHECKOUT.ORDER
 
 Credentials: a REST app in the Developer Dashboard (its client id and secret, sandbox and live
 are separate), and a webhook on it for `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`,
-`PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED` - its id is `webhook_id`.
+`PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED` (with saved methods, `VAULT.PAYMENT-TOKEN.CREATED`
+and `.DELETED` too) - its id is `webhook_id`.
 
 The manual, [docs/index.md](docs/index.md): every option, what each operation calls and how PayPal's
 answers are read, the webhook events, errors, and what is verified.
+
+## Saved methods (1.1)
+
+A buyer's PayPal account kept in PayPal's vault and charged later without a page, behind
+omnisense/omnitrade 1.1's requests: `FetchSavedMethods` (a PayPal customer's payment tokens),
+`RemoveSavedMethod` (only that customer's), and a `Payment` naming one (`savedMethod`, with its
+`customer->reference`): an order paid with the token's `vault_id`, PAID at once, REFUSED with
+PayPal's issue, or PENDING with PayPal's payer-action page when PayPal asks its payer - `fetch()`
+or the `CHECKOUT.ORDER.APPROVED` webhook then captures it. `VAULT.PAYMENT-TOKEN.*` events are read.
+
+Saving takes one PayPal step more than the core asks: the setup token the buyer approves must be
+turned into a payment token, with this package's own `CompleteMethodSetup` on the `returnUrl`.
+`SetupMethod` is therefore supported only with `setup_method: true`, for a host that makes that
+step; a card is not saved on a hosted page (PayPal vaults cards through its card fields).
+
+```php
+use Omnitrade\Model\Customer;
+use Omnitrade\Model\Money;
+use Omnitrade\Model\Payment;
+use Omnitrade\PayPal\Request\CompleteMethodSetup;
+use Omnitrade\Request\SetupMethod;
+
+$setup = $paypal->execute(new SetupMethod(new Customer('alice@example.org'), 'https://shop.example/saved'))->getSetup();   // setup_method: true
+// send the buyer to $setup->redirectUrl; keep $setup->customer and $setup->reference
+// on https://shop.example/saved:
+$method = $paypal->execute(new CompleteMethodSetup($setup->reference, $setup->customer))->getMethod();   // "PayPal alice@example.org"
+$paid = $paypal->purchase(new Payment(Money::of(1990, 'EUR'), 'ORDER-7', customer: new Customer(reference: $setup->customer),
+    returnUrl: 'https://shop.example/orders/7', idempotencyKey: 'order-7-attempt-1', savedMethod: $method->reference));
+// PAID, REFUSED, or PENDING with PayPal's page in $paid->redirectUrl
+```
+
+The app needs PayPal's Vault feature (and, live, PayPal's approval for vaulting PayPal accounts).
+Nothing of this was checked against PayPal: see [docs/index.md](docs/index.md#saved-methods-11)
+and its list of what to verify in a sandbox.
 
 ## Responsibility
 

@@ -12,6 +12,7 @@ use Omnitrade\Model\Tags;
 use Omnitrade\PayPal\Api;
 use Omnitrade\PayPal\Data;
 use Omnitrade\PayPal\Orders;
+use Omnitrade\PayPal\Vault;
 use Omnitrade\Request\Notify;
 use Omnitrade\Request\Request;
 
@@ -21,6 +22,12 @@ use Omnitrade\Request\Request;
  * PENDING (the money comes with capture()); PAYMENT.CAPTURE.COMPLETED is PAID;
  * DENIED is REFUSED; REFUNDED is REFUNDED. The reference is the order's id,
  * taken from the capture's related ids when the event is a capture's.
+ *
+ * A saved method's charge PayPal sent its payer to confirm (Payment::$savedMethod,
+ * PAYER_ACTION_REQUIRED): its CHECKOUT.ORDER.APPROVED captures it (Api::completed(), once) and
+ * says how it ended - PAID, or what the capture became. VAULT.PAYMENT-TOKEN.CREATED, .DELETED and
+ * .DELETION-INITIATED name the payment token (reference: the token's id, status none; the saved
+ * method itself in $raw's resource).
  *
  * $tags: the site the order was made for (its purchase unit's reference_id,
  * set from the gateway's "tags" option) on the order events, and the
@@ -59,13 +66,19 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
         $resource = Data::of($event)->fields('resource');
         $type = $event['event_type'];
         $isOrder = str_starts_with($type, 'CHECKOUT.ORDER.');
-        $reference = $isOrder ? ($resource['id'] ?? null) : Data::of($resource)->get('supplementary_data.related_ids.order_id');
+        $isToken = str_starts_with($type, 'VAULT.PAYMENT-TOKEN.');
+        $reference = $isOrder || $isToken ? ($resource['id'] ?? null) : Data::of($resource)->get('supplementary_data.related_ids.order_id');
+        $order = null;
+        if ('CHECKOUT.ORDER.APPROVED' === $type && Vault::charged($resource)) {
+            // The payer confirmed a saved method's charge: nothing else takes the money.
+            $order = Orders::transaction($this->api->completed($resource));
+        }
 
         $request->setResult(new Notification(
             provider: 'paypal',
             event: $type,
             reference: Data::castOrNull($reference),
-            status: match ($type) {
+            status: null !== $order ? $order->status : match ($type) {
                 'CHECKOUT.ORDER.APPROVED' => Status::PENDING,
                 'CHECKOUT.ORDER.COMPLETED', 'PAYMENT.CAPTURE.COMPLETED' => Status::PAID,
                 'PAYMENT.CAPTURE.DENIED', 'PAYMENT.CAPTURE.DECLINED' => Status::REFUSED,
@@ -75,7 +88,7 @@ final class NotifyAction implements ActionInterface, ApiAwareInterface
                 'PAYMENT.AUTHORIZATION.VOIDED', 'CHECKOUT.ORDER.VOIDED' => Status::CANCELLED,
                 default => null,
             },
-            transaction: $isOrder && isset($resource['id']) ? Orders::transaction($resource) : null,
+            transaction: $order ?? ($isOrder && isset($resource['id']) ? Orders::transaction($resource) : null),
             id: Data::of($event)->textOrNull('id'),
             raw: $event,
             tags: self::tags($type, $resource),

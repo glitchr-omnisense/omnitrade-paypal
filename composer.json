@@ -1,7 +1,7 @@
 {
     "name": "omnitrade/paypal",
     "type": "library",
-    "description": "Omnitrade PayPal: orders approved on PayPal's page and captured on return, authorizations, refunds and webhook events, over the v2 REST API.",
+    "description": "Omnitrade PayPal: orders approved on PayPal's page and captured on return, authorizations, refunds, saved PayPal accounts charged without a page (Vault v3) and webhook events, over the REST API.",
     "keywords": [
         "payment",
         "paypal",
@@ -17,7 +17,7 @@
     "require": {
         "php": ">=8.2",
         "omnisense/contracts": "^1.0",
-        "omnisense/omnitrade": "^1.0",
+        "omnisense/omnitrade": "^1.1",
         "symfony/http-client": "^6.4|^7.0|^8.0"
     },
     "require-dev": {
